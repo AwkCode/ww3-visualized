@@ -2011,5 +2011,16 @@
     "casualties": "Unknown",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Lebanon — Fresh Israeli Attacks",
+    "lat": 33.85,
+    "lng": 35.5,
+    "attacker": "Israel",
+    "date": "Apr 9, 2026",
+    "details": "Several people reported killed",
+    "casualties": "Several killed",
+    "killed": 0,
+    "injured": 0
   }
 ]
