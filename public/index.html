@@ -1295,6 +1295,21 @@
         }
 
         // ===== GEOJSON CONVERTERS =====
+        function flagKeyForStrike(s) {
+            if (s.attacker === 'Live') return 'live';
+            if (s.attacker === 'Iran') return 'flag-ir';
+            if (s.attacker === 'Israel') return 'flag-il'; // Israel → Lebanon strikes
+            if (s.attacker === 'Hezbollah') return 'flag-hezbollah';
+            if (s.attacker === 'Maritime') return 'flag-maritime';
+            if (s.attacker === 'US/Israel') {
+                const keys = attributeStrike(s);
+                if (keys.length === 1 && keys[0] === 'US') return 'flag-us';
+                if (keys.length === 1 && keys[0] === 'IL') return 'flag-il';
+                return 'flag-us-il';
+            }
+            return 'flag-us';
+        }
+
         function strikesToGeoJSON(strikeList) {
             return {
                 type: 'FeatureCollection',
@@ -1306,7 +1321,9 @@
                         details: s.details, casualties: s.casualties,
                         killed: s.killed, injured: s.injured,
                         color: attackerColors[s.attacker] || '#f59e0b',
-                        radius: severityScale(s.killed)
+                        radius: severityScale(s.killed),
+                        flag: flagKeyForStrike(s),
+                        isLive: s.attacker === 'Live' ? 1 : 0
                     }
                 }))
             };
@@ -1571,10 +1588,109 @@
             });
         });
 
+        // ===== FLAG ICON LOADER =====
+        // Draws a circular flag icon on a canvas and registers it with the map.
+        function addRoundFlagImage(id, drawFn, size = 72) {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            // circle clip
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI * 2);
+            ctx.clip();
+            drawFn(ctx, size);
+            ctx.restore();
+            // white ring
+            ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI * 2);
+            ctx.stroke();
+            if (map.hasImage(id)) map.removeImage(id);
+            map.addImage(id, ctx.getImageData(0, 0, size, size));
+        }
+
+        function drawImageCover(ctx, img, size) {
+            const aspect = img.width / img.height;
+            let w, h, x, y;
+            if (aspect >= 1) { h = size; w = size * aspect; x = (size - w) / 2; y = 0; }
+            else { w = size; h = size / aspect; x = 0; y = (size - h) / 2; }
+            ctx.drawImage(img, x, y, w, h);
+        }
+
+        function loadImagePromise(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        async function loadFlagIcons() {
+            // Country flags from flagcdn (SVG keeps it crisp).
+            const countryFlags = [
+                { id: 'flag-us', url: 'https://flagcdn.com/w160/us.png' },
+                { id: 'flag-il', url: 'https://flagcdn.com/w160/il.png' },
+                { id: 'flag-ir', url: 'https://flagcdn.com/w160/ir.png' }
+            ];
+            await Promise.all(countryFlags.map(async f => {
+                try {
+                    const img = await loadImagePromise(f.url);
+                    addRoundFlagImage(f.id, (ctx, size) => drawImageCover(ctx, img, size));
+                } catch (e) {
+                    console.warn('flag load failed', f.id, e);
+                }
+            }));
+
+            // US + IL combined flag (split diagonally)
+            try {
+                const [usImg, ilImg] = await Promise.all([
+                    loadImagePromise('https://flagcdn.com/w160/us.png'),
+                    loadImagePromise('https://flagcdn.com/w160/il.png')
+                ]);
+                addRoundFlagImage('flag-us-il', (ctx, size) => {
+                    ctx.save();
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(size, 0); ctx.lineTo(0, size); ctx.closePath();
+                    ctx.clip(); drawImageCover(ctx, usImg, size);
+                    ctx.restore();
+                    ctx.save();
+                    ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(size, size); ctx.lineTo(0, size); ctx.closePath();
+                    ctx.clip(); drawImageCover(ctx, ilImg, size);
+                    ctx.restore();
+                });
+            } catch (e) { console.warn('combo flag failed', e); }
+
+            // Hezbollah — yellow background with green bolt
+            addRoundFlagImage('flag-hezbollah', (ctx, size) => {
+                ctx.fillStyle = '#f7d600'; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#0a7d2a';
+                ctx.font = `bold ${size * 0.72}px -apple-system, sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('⚡', size/2, size/2 + size*0.04);
+            });
+
+            // Maritime — teal with anchor
+            addRoundFlagImage('flag-maritime', (ctx, size) => {
+                ctx.fillStyle = '#0d3b40'; ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#5eead4';
+                ctx.font = `bold ${size * 0.6}px -apple-system, sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('⚓', size/2, size/2 + size*0.04);
+            });
+        }
+
         let strikesLoaded = false;
+        let flagsLoaded = false;
         function initMapLayers() {
             if (map._layersInited) return;
             if (!strikesLoaded) return;
+            if (!flagsLoaded) {
+                loadFlagIcons().then(() => { flagsLoaded = true; initMapLayers(); });
+                return;
+            }
             map._layersInited = true;
             // Sources
             map.addSource('strikes', {
@@ -1586,12 +1702,12 @@
                 data: labelsToGeoJSON(getVisibleStrikes())
             });
 
-            // Glow layer (behind circles)
+            // Glow layer (behind circles) — skip live, they get their own pulse
             map.addLayer({
                 id: 'strike-glow',
                 type: 'circle',
                 source: 'strikes',
-                filter: ['>', ['get', 'killed'], 0],
+                filter: ['all', ['>', ['get', 'killed'], 0], ['==', ['get', 'isLive'], 0]],
                 paint: {
                     'circle-radius': ['interpolate', ['linear'], ['zoom'],
                         2, ['/', ['get', 'radius'], 2],
@@ -1604,11 +1720,12 @@
                 }
             });
 
-            // Main circle markers
+            // Main circle markers (curated strikes only, live excluded)
             map.addLayer({
                 id: 'strike-circles',
                 type: 'circle',
                 source: 'strikes',
+                filter: ['==', ['get', 'isLive'], 0],
                 paint: {
                     'circle-radius': ['interpolate', ['linear'], ['zoom'],
                         2, ['/', ['get', 'radius'], 3],
@@ -1618,10 +1735,76 @@
                     'circle-color': ['get', 'color'],
                     'circle-opacity': 0.85,
                     'circle-stroke-color': ['get', 'color'],
-                    'circle-stroke-width': 1,
-                    'circle-stroke-opacity': 0.4
+                    'circle-stroke-width': 1.5,
+                    'circle-stroke-opacity': 0.6
                 }
             });
+
+            // Flag icons sitting inside the circles
+            map.addLayer({
+                id: 'strike-flags',
+                type: 'symbol',
+                source: 'strikes',
+                filter: ['==', ['get', 'isLive'], 0],
+                layout: {
+                    'icon-image': ['get', 'flag'],
+                    'icon-allow-overlap': true,
+                    'icon-ignore-placement': true,
+                    'icon-size': ['interpolate', ['linear'], ['zoom'],
+                        2, ['*', ['/', ['get', 'radius'], 72], 0.7],
+                        6, ['*', ['/', ['get', 'radius'], 72], 1.9],
+                        12, ['*', ['/', ['get', 'radius'], 72], 3.1]
+                    ]
+                }
+            });
+
+            // ===== LIVE MARKERS — pulsating red =====
+            // Outer pulse ring (animated)
+            map.addLayer({
+                id: 'strike-live-pulse',
+                type: 'circle',
+                source: 'strikes',
+                filter: ['==', ['get', 'isLive'], 1],
+                paint: {
+                    'circle-radius': 14,
+                    'circle-color': '#ef4444',
+                    'circle-opacity': 0.35,
+                    'circle-blur': 0.4
+                }
+            });
+            // Solid red core
+            map.addLayer({
+                id: 'strike-live-core',
+                type: 'circle',
+                source: 'strikes',
+                filter: ['==', ['get', 'isLive'], 1],
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'],
+                        2, 4,
+                        6, 7,
+                        12, 11
+                    ],
+                    'circle-color': '#ef4444',
+                    'circle-opacity': 1,
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': 1.5,
+                    'circle-stroke-opacity': 0.9
+                }
+            });
+
+            // Animate pulse
+            if (!map._livePulseTimer) {
+                let t = 0;
+                map._livePulseTimer = setInterval(() => {
+                    t += 0.08;
+                    const r = 12 + Math.sin(t) * 10 + 6; // 8..30
+                    const o = 0.45 - (Math.sin(t) + 1) * 0.18; // 0.09..0.45
+                    if (map.getLayer('strike-live-pulse')) {
+                        map.setPaintProperty('strike-live-pulse', 'circle-radius', r);
+                        map.setPaintProperty('strike-live-pulse', 'circle-opacity', o);
+                    }
+                }, 60);
+            }
 
             // Labels — Mapbox handles collision detection automatically
             map.addLayer({
@@ -1649,31 +1832,36 @@
                 }
             });
 
-            // Click popup on markers
-            map.on('click', 'strike-circles', (e) => {
+            // Click popup on markers (works on curated circles, flag symbols, and live core)
+            const clickableLayers = ['strike-circles', 'strike-flags', 'strike-live-core'];
+            const handleStrikeClick = (e) => {
                 const p = e.features[0].properties;
                 const coords = e.features[0].geometry.coordinates.slice();
-                const color = p.color;
                 const isLive = p.attacker === 'Live';
+                const color = isLive ? '#ef4444' : p.color;
 
                 const casualtyHtml = isLive
-                    ? `<div class="casualties" style="border-left-color:${color};background:rgba(245,158,11,0.1);color:#fbbf24">${p.casualties}</div>
+                    ? `<div class="casualties" style="border-left-color:${color};background:rgba(239,68,68,0.12);color:#fca5a5">${p.casualties}</div>
                        <div style="margin-top:6px;font-size:10px;color:#6b7280;font-style:italic;">Auto-detected from news.</div>`
                     : `<div class="casualties">${p.casualties}</div>`;
+
+                const attackerLabel = isLive ? '🔴 LIVE' : p.attacker;
 
                 popup.setLngLat(coords)
                     .setHTML(`<div class="strike-popup" style="padding:14px;">
                         <h3 style="color:${color}">${p.name}</h3>
-                        <span class="attacker-tag" style="background:${color}">${p.attacker}</span>
+                        <span class="attacker-tag" style="background:${color}">${attackerLabel}</span>
                         <div class="date">${p.date}</div>
                         <div class="details">${p.details}</div>
                         ${casualtyHtml}
                     </div>`)
                     .addTo(map);
+            };
+            clickableLayers.forEach(layerId => {
+                map.on('click', layerId, handleStrikeClick);
+                map.on('mouseenter', layerId, () => map.getCanvas().style.cursor = 'pointer');
+                map.on('mouseleave', layerId, () => map.getCanvas().style.cursor = '');
             });
-
-            map.on('mouseenter', 'strike-circles', () => map.getCanvas().style.cursor = 'pointer');
-            map.on('mouseleave', 'strike-circles', () => map.getCanvas().style.cursor = '');
 
             // ===== COALITION LAYERS =====
             map.addSource('countries', {
