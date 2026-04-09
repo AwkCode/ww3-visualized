@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="32" fill="#0a0a0a"/>
+  <circle cx="128" cy="128" r="96" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <circle cx="128" cy="128" r="64" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+  <line x1="128" y1="16" x2="128" y2="240" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+  <line x1="16" y1="128" x2="240" y2="128" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+  <circle cx="128" cy="128" r="16" fill="#ef4444" opacity="0.9"/>
+  <circle cx="128" cy="128" r="16" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.4"/>
+  <text x="128" y="142" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="44" font-weight="700" fill="#fff" letter-spacing="3">WW3</text>
+</svg>

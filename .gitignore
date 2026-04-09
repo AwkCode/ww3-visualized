@@ -1,0 +1,10 @@
+.env
+.env.local
+*.env
+node_modules/
+.vercel
+.DS_Store
+*.log
+.claude/
+scripts/extract-strikes.js
+public/config.js

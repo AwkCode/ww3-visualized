@@ -1,0 +1,17 @@
+{
+  "name": "WARTRAX",
+  "symbol": "WTRX",
+  "description": "Community token powering the WW3 Visualized conflict tracker. Real-time intelligence, open data.",
+  "image": "https://ww3-visualized.vercel.app/ww3-logo.jpg",
+  "external_url": "https://ww3-visualized.vercel.app",
+  "attributes": [],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://ww3-visualized.vercel.app/ww3-logo.jpg",
+        "type": "image/jpeg"
+      }
+    ],
+    "category": "fungible"
+  }
+}

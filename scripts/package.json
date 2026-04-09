@@ -1,0 +1,12 @@
+{
+  "name": "ww3-visualized-scripts",
+  "version": "1.0.0",
+  "description": "Auto-update scripts for ww3-visualized",
+  "private": true,
+  "scripts": {
+    "update": "node update-data.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

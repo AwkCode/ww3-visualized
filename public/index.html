@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Iran Conflict Tracker — Live Military Strikes Map</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0a0a'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23ef4444' stroke-width='1.5' opacity='0.5'/%3E%3Ccircle cx='32' cy='32' r='12' fill='none' stroke='%23ef4444' stroke-width='1' opacity='0.3'/%3E%3Cline x1='32' y1='8' x2='32' y2='56' stroke='%23ef4444' stroke-width='1' opacity='0.4'/%3E%3Cline x1='8' y1='32' x2='56' y2='32' stroke='%23ef4444' stroke-width='1' opacity='0.4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23ef4444'/%3E%3C/svg%3E">
+    <script src="config.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+
+        /* ===== NEWS TICKER (top bar) ===== */
+        #news-ticker {
+            background: rgba(10,10,10,0.97);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            height: 34px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .ticker-label {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            padding: 0 14px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 7px;
+            font-family: 'Inter', sans-serif;
+        }
+        .ticker-dot {
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        .ticker-track {
+            flex: 1;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            position: relative;
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+        }
+        .ticker-scroll {
+            display: flex;
+            gap: 0;
+            white-space: nowrap;
+            animation: tickerScroll 45s linear infinite;
+            will-change: transform;
+        }
+        .ticker-scroll:hover { animation-play-state: paused; }
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .ticker-item {
+            font-size: 12px;
+            color: #d1d5db;
+            text-decoration: none;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 20px;
+            height: 34px;
+            transition: color 0.15s;
+        }
+        .ticker-item:hover { color: #fff; }
+        .ticker-source {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ticker-sep {
+            color: #1f2937;
+            font-size: 5px;
+            flex-shrink: 0;
+        }
+
+        /* filter-pill kept for any legacy references */
+        .filter-pill { display: none; }
+
+        /* ===== DATE SELECTOR (left-side scroll wheel) ===== */
+        #date-sidebar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 800;
+            background: rgba(10,10,10,0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #date-all-btn {
+            width: 100%;
+            padding: 8px 10px;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.5);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            transition: all 0.2s;
+        }
+        #date-all-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08); }
+        #date-all-btn.active {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+        }
+        .date-scroll {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            max-height: 420px;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(239,68,68,0.3) transparent;
+            padding: 4px 0;
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+        }
+        .date-scroll::-webkit-scrollbar { width: 3px; }
+        .date-scroll::-webkit-scrollbar-track { background: transparent; }
+        .date-scroll::-webkit-scrollbar-thumb { background: rgba(239,68,68,0.3); border-radius: 3px; }
+        .date-scroll::-webkit-scrollbar-thumb:hover { background: rgba(239,68,68,0.5); }
+        .date-pill {
+            padding: 6px 10px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.35);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            white-space: nowrap;
+            transition: all 0.15s;
+            text-align: center;
+            letter-spacing: 0.3px;
+            scroll-snap-align: center;
+            flex-shrink: 0;
+        }
+        .date-pill:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.04); }
+        .date-pill.active {
+            background: rgba(239,68,68,0.15);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* ===== LAYOUT ===== */
+        #main-wrap {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 34px);
+        }
+        #main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+        #map {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ===== NEWS PANEL ===== */
+        #news-panel {
+            width: 340px;
+            background: #0f0f0f;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+        #news-panel.collapsed {
+            width: 0;
+            border-left: none;
+        }
+        .news-header {
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #0d0d1a, #111827);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .news-header h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+            50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+        }
+        .news-header .updated {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #4b5563;
+        }
+        .news-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
+        }
+        .news-tab {
+            flex: 1;
+            padding: 7px 0;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .news-tab:hover { color: #9ca3af; }
+        .news-tab.active {
+            color: #fff;
+            border-bottom-color: #ef4444;
+        }
+        .news-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 8px;
+        }
+        .news-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+        .news-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.08);
+        }
+        .news-item.latest {
+            border-left-color: #ef4444;
+        }
+        .news-item .source-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .news-item .source {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .news-item .source-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .news-item .source-dot.newest {
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        .news-item .title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #e5e7eb;
+            line-height: 1.45;
+            margin-bottom: 3px;
+        }
+        .news-item .desc {
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .news-item .time {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #4b5563;
+            margin-top: 5px;
+        }
+        .news-loading {
+            padding: 20px;
+            text-align: center;
+            color: #4b5563;
+            font-size: 12px;
+        }
+        #news-toggle {
+            position: absolute;
+            right: 340px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            background: rgba(10,10,10,0.92);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #9ca3af;
+            padding: 10px 6px;
+            cursor: pointer;
+            border-radius: 6px 0 0 6px;
+            font-size: 12px;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        #news-toggle .toggle-label {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+        #news-toggle .toggle-dot {
+            width: 6px;
+            height: 6px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        #news-toggle:hover { color: #fff; }
+        #news-toggle:hover .toggle-label { color: #fff; }
+        #news-toggle.collapsed { right: 0; }
+        .news-list::-webkit-scrollbar { width: 3px; }
+        .news-list::-webkit-scrollbar-track { background: transparent; }
+        .news-list::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
+
+        /* ===== INFO BUTTON ===== */
+        .info-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .info-btn:hover { background: rgba(255,255,255,0.1); color: #d1d5db; border-color: rgba(255,255,255,0.25); }
+        .info-tooltip {
+            display: none;
+            position: fixed;
+            background: rgba(10,10,10,0.96);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 14px 16px;
+            min-width: 200px;
+            white-space: nowrap;
+            color: #d1d5db;
+            font-size: 11px;
+            line-height: 1.7;
+            z-index: 9999;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        .info-tooltip.show { display: block; }
+        .info-tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            right: 12px;
+            border: 6px solid transparent;
+            border-bottom-color: rgba(255,255,255,0.1);
+        }
+        .info-section-title {
+            font-size: 9px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 1px 0;
+        }
+        .info-dot {
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #6b7280;
+        }
+        .info-sources {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 9px;
+            color: #4b5563;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* ===== POPUPS ===== */
+        .strike-popup {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-width: 240px;
+            max-width: 320px;
+        }
+        .strike-popup h3 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 4px;
+        }
+        .strike-popup .attacker-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 100px;
+            color: #fff;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+        .strike-popup .date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+        .strike-popup .details {
+            font-size: 12px;
+            line-height: 1.55;
+            color: #d1d5db;
+        }
+        .strike-popup .casualties {
+            margin-top: 6px;
+            padding: 6px 10px;
+            border-left: 3px solid #dc2626;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(239,68,68,0.1);
+            color: #fca5a5;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.1; }
+            100% { opacity: 0.5; }
+        }
+        .pulse-ring {
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes glowPulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 0.15; }
+            100% { opacity: 0.4; }
+        }
+        .glow-ring {
+            animation: glowPulse 3s infinite ease-in-out;
+        }
+
+        /* ===== STRIKE COUNTER ===== */
+        #strike-counter {
+            position: absolute;
+            bottom: 28px;
+            left: 10px;
+            z-index: 800;
+            background: rgba(10,10,10,0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: 'Inter', sans-serif;
+            min-width: 160px;
+        }
+        .counter-title {
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        .counter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        .counter-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #d1d5db;
+        }
+        .counter-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .counter-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .counter-total {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .counter-total .counter-label {
+            font-size: 10px;
+            color: #9ca3af;
+            font-weight: 600;
+        }
+        .counter-total .counter-value {
+            font-size: 14px;
+            color: #ef4444;
+        }
+        @media (max-width: 768px) {
+            #strike-counter {
+                bottom: auto;
+                left: 6px;
+                padding: 8px 10px;
+                min-width: 140px;
+            }
+            .counter-label { font-size: 10px; }
+            .counter-value { font-size: 11px; }
+            .counter-total .counter-value { font-size: 12px; }
+        }
+
+        /* ===== MAPBOX POPUP DARK THEME ===== */
+        .mapboxgl-popup-content {
+            background: rgba(10, 10, 10, 0.95) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 0 !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            max-width: 340px;
+        }
+        .mapboxgl-popup-tip { border-top-color: rgba(10, 10, 10, 0.95) !important; }
+        .mapboxgl-popup-close-button { color: #9ca3af; font-size: 18px; padding: 4px 8px; }
+        .mapboxgl-popup-close-button:hover { color: #fff; background: transparent; }
+        .mapboxgl-ctrl-group { background: rgba(10,10,10,0.85) !important; border: 1px solid rgba(255,255,255,0.08) !important; }
+        .mapboxgl-ctrl-group button { filter: invert(1); }
+        .mapboxgl-ctrl-attrib { opacity: 0.35 !important; font-size: 9px !important; background: rgba(0,0,0,0.4) !important; }
+        .mapboxgl-ctrl-attrib a { color: #888 !important; }
+        /* ===== COALITION TOGGLE ===== */
+        #coalition-toggle {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 800;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            display: flex;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        #coalition-toggle button {
+            padding: 9px 20px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.45);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            transition: all 0.15s;
+        }
+        #coalition-toggle button:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+        #coalition-toggle button.active {
+            background: rgba(239,68,68,0.2);
+            color: #fff;
+            box-shadow: inset 0 -2px 0 #ef4444;
+        }
+        /* Coalition legend */
+        #coalition-legend {
+            position: absolute;
+            bottom: 80px;
+            left: 14px;
+            z-index: 800;
+            background: rgba(10,10,10,0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: none;
+            min-width: 180px;
+        }
+        #coalition-legend.visible { display: block; }
+        .legend-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 0;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .legend-label {
+            font-size: 11px;
+            color: #d1d5db;
+            font-weight: 500;
+        }
+
+        /* ===== LIVE CHAT PANEL ===== */
+        #chat-panel {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            width: 320px;
+            max-height: 460px;
+            z-index: 1100;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            transition: all 0.25s ease;
+        }
+        #chat-panel.collapsed {
+            max-height: 42px;
+        }
+        #chat-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #0d0d1a, #111827);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        #chat-header-title {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .chat-live-dot {
+            width: 7px;
+            height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        #chat-username-display {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #9ca3af;
+            margin-right: 8px;
+        }
+        #chat-toggle-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        #chat-toggle-btn:hover { color: #fff; }
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 250px;
+            max-height: 340px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+        #chat-messages::-webkit-scrollbar { width: 4px; }
+        #chat-messages::-webkit-scrollbar-track { background: transparent; }
+        #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .chat-msg {
+            font-size: 12px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            padding: 2px 0;
+        }
+        .chat-msg-user {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            color: #ef4444;
+            margin-right: 6px;
+            font-size: 11px;
+        }
+        .chat-msg-user.self { color: #22c55e; }
+        .chat-msg-text {
+            color: #d1d5db;
+        }
+        .chat-system {
+            font-size: 10px;
+            color: #6b7280;
+            font-style: italic;
+            text-align: center;
+            padding: 4px 0;
+        }
+        #chat-input-wrap {
+            display: flex;
+            padding: 10px 12px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        #chat-input {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 7px 10px;
+            color: #fff;
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
+        }
+        #chat-input:focus { border-color: rgba(239,68,68,0.5); }
+        #chat-input::placeholder { color: #4b5563; }
+        #chat-send {
+            background: #ef4444;
+            border: none;
+            border-radius: 6px;
+            padding: 0 14px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        #chat-send:hover { background: #dc2626; }
+        #chat-send:disabled { background: #4b5563; cursor: not-allowed; }
+        #chat-error {
+            font-size: 10px;
+            color: #ef4444;
+            padding: 0 14px 6px;
+            min-height: 14px;
+        }
+        @media (max-width: 768px) {
+            #chat-panel {
+                bottom: 6px;
+                right: 6px;
+                width: calc(100vw - 12px);
+                max-width: 360px;
+                max-height: 55vh;
+            }
+            #chat-panel.collapsed { max-height: 40px; }
+            #chat-messages { max-height: 40vh; min-height: 160px; }
+        }
+
+        /* time-pill / filter-sep — legacy, no longer used */
+
+        /* ===== MOBILE ===== */
+        @media (max-width: 768px) {
+            #news-ticker { height: 30px; }
+            .ticker-label { font-size: 8px; padding: 0 10px; gap: 5px; }
+            .ticker-label svg { width: 20px; height: 20px; }
+            .ticker-item { font-size: 11px; padding: 0 14px; height: 30px; }
+            #main-wrap { height: calc(100vh - 30px); }
+            #coalition-toggle {
+                top: 6px;
+                right: auto;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            #coalition-toggle button {
+                padding: 7px 14px;
+                font-size: 10px;
+            }
+            #coalition-legend {
+                bottom: 60px;
+                left: 8px;
+                padding: 10px 12px;
+                min-width: 160px;
+            }
+            #date-sidebar {
+                left: 6px;
+                top: 50px;
+                border-radius: 10px;
+                max-height: calc(100vh - 180px);
+            }
+            #date-all-btn { padding: 5px 7px; font-size: 8px; }
+            .date-scroll { max-height: 200px; }
+            .date-pill { padding: 5px 7px; font-size: 9px; }
+            #strike-counter {
+                bottom: auto;
+                left: 6px;
+                right: auto;
+                padding: 6px 8px;
+                min-width: 130px;
+                max-height: calc(100vh - 200px);
+                overflow-y: auto;
+            }
+            #strike-counter .counter-label { font-size: 9px; }
+            #strike-counter .counter-value { font-size: 10px; }
+            #strike-counter .counter-total .counter-value { font-size: 11px; }
+            #strike-counter .counter-cas-num { font-size: 10px; }
+            #news-panel {
+                position: absolute;
+                top: 0; right: 0; bottom: 0;
+                width: 85vw;
+                max-width: 340px;
+                z-index: 1001;
+                box-shadow: -4px 0 24px rgba(0,0,0,0.7);
+            }
+            #news-panel.collapsed { width: 0; box-shadow: none; }
+            #news-toggle { right: 0; z-index: 1002; }
+            #news-toggle:not(.collapsed) { right: 85vw; }
+            .strike-popup { min-width: 180px; max-width: 250px; }
+            .mapboxgl-popup-content { max-width: 280px !important; }
+            .mapboxgl-ctrl-group { transform: scale(0.85); transform-origin: top right; }
+        }
+        /* ===== STRIKE COUNTER OVERLAY ===== */
+        #strike-counter {
+            position: absolute;
+            bottom: 18px;
+            left: 14px;
+            z-index: 1000;
+            background: rgba(10,10,10,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            pointer-events: auto;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .counter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .counter-toggle:hover {
+            background: rgba(255,255,255,0.04);
+        }
+        .counter-toggle-dot {
+            width: 6px;
+            height: 6px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+            flex-shrink: 0;
+        }
+        .counter-toggle-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #9ca3af;
+            flex: 1;
+        }
+        .counter-toggle-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ef4444;
+        }
+        .counter-toggle-arrow {
+            font-size: 10px;
+            color: #6b7280;
+            transition: transform 0.25s;
+        }
+        #strike-counter.expanded .counter-toggle-arrow {
+            transform: rotate(180deg);
+        }
+        .counter-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease, padding 0.25s ease;
+            padding: 0 14px;
+        }
+        #strike-counter.expanded .counter-body {
+            max-height: 400px;
+            padding: 0 14px 10px;
+        }
+        .counter-title {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #6b7280;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .counter-title-dot {
+            width: 5px;
+            height: 5px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: livePulse 2s infinite ease-in-out;
+        }
+        .counter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .counter-row:last-child {
+            border-bottom: none;
+        }
+        .counter-row:hover {
+            background: rgba(255,255,255,0.04);
+        }
+        .counter-row.inactive {
+            opacity: 0.3;
+        }
+        .counter-row.inactive:hover {
+            opacity: 0.5;
+        }
+        .counter-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #d1d5db;
+        }
+        .counter-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .counter-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            min-width: 28px;
+            text-align: right;
+        }
+        .counter-total {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 8px;
+            margin-top: 4px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .counter-total .counter-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .counter-total .counter-value {
+            font-size: 16px;
+            color: #ef4444;
+        }
+        .counter-casualties {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .counter-cas-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .counter-cas-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .counter-cas-label {
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            margin-top: 1px;
+        }
+        @media (max-width: 768px) {
+            #strike-counter {
+                /* Positioned by JS right under the date sidebar */
+                bottom: auto;
+                left: 6px;
+                padding: 8px 10px;
+                min-width: 160px;
+            }
+            .counter-value { font-size: 12px; }
+            .counter-label { font-size: 10px; }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="news-ticker">
+        <div class="ticker-label">
+            <svg width="28" height="28" viewBox="0 0 64 64" style="flex-shrink:0;margin-right:4px;">
+                <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                <circle cx="32" cy="32" r="16" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.8"/>
+                <line x1="32" y1="4" x2="32" y2="60" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+                <line x1="4" y1="32" x2="60" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+                <circle cx="32" cy="32" r="4" fill="#ef4444" opacity="0.9">
+                    <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="32" cy="32" r="4" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.5">
+                    <animate attributeName="r" values="4;12;4" dur="2.5s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.5;0;0.5" dur="2.5s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            <span class="ticker-dot"></span> LIVE
+        </div>
+        <div class="ticker-track">
+            <div class="ticker-scroll" id="ticker-scroll">
+                <span class="ticker-item" style="color:#4b5563">Loading headlines...</span>
+            </div>
+        </div>
+    </div>
+    <div id="main-wrap">
+        <div id="main">
+            <div id="map"></div>
+            <div id="coalition-toggle">
+                <button class="active" data-mode="strikes">Strikes</button>
+                <button data-mode="coalitions">Coalitions</button>
+            </div>
+            <div id="coalition-legend">
+                <div class="legend-title">Coalitions</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel Alliance</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">European Union / Canada</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span class="legend-label">Iran / Russia / China Axis</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span class="legend-label">Neutral / Unclear</span></div>
+            </div>
+            <div id="strike-counter"></div>
+            <div id="date-sidebar"></div>
+            <div id="news-panel">
+                <div class="news-header">
+                    <h3><span class="live-dot"></span> LIVE FEED</h3>
+                    <span class="updated" id="last-updated">Loading...</span>
+                </div>
+                <div class="news-tabs">
+                    <button class="news-tab active" data-feed="all">All</button>
+                    <button class="news-tab" data-feed="bbc">BBC</button>
+                    <button class="news-tab" data-feed="nyt">NYT</button>
+                    <button class="news-tab" data-feed="aj">AJ</button>
+                </div>
+                <div class="news-list" id="news-list">
+                    <div class="news-loading">Loading headlines...</div>
+                </div>
+            </div>
+            <button id="news-toggle" title="Toggle news panel"><span class="toggle-arrow">&#9664;</span><span class="toggle-dot"></span><span class="toggle-label">News</span></button>
+        </div>
+    </div>
+
+    <!-- Live Anonymous Chat -->
+    <div id="chat-panel">
+        <div id="chat-header">
+            <span id="chat-header-title"><span class="chat-live-dot"></span>LIVE CHAT</span>
+            <span id="chat-username-display"></span>
+            <button id="chat-toggle-btn" title="Collapse">▾</button>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="chat-error"></div>
+        <div id="chat-input-wrap">
+            <input id="chat-input" type="text" maxlength="200" placeholder="Type a message..." autocomplete="off" />
+            <button id="chat-send">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== MAPBOX GL INITIALIZATION =====
+        mapboxgl.accessToken = window.MAPBOX_TOKEN || '';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            projection: 'globe',
+            center: [48, 30],
+            zoom: 3.5,
+            minZoom: 1.5,
+            maxZoom: 15,
+            attributionControl: false
+        });
+
+        map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+
+        // Color scheme by attacker
+        const attackerColors = {
+            'US/Israel':   '#3b82f6',  // blue
+            'Iran':        '#ef4444',  // red
+            'Hezbollah':   '#f97316',  // orange
+            'Israel':      '#a855f7',  // purple
+            'Maritime':    '#14b8a6',  // teal
+        };
+
+        const severityScale = (killed) => {
+            if (killed >= 100) return 24;
+            if (killed >= 20) return 18;
+            if (killed >= 5) return 14;
+            if (killed >= 1) return 11;
+            return 8;
+        };
+
+        let strikes = [];
+
+        // Heuristic to attribute US/Israel joint strikes
+        function attributeStrike(s) {
+            const d = (s.details + ' ' + s.name).toLowerCase();
+            const isUS = /\b(centcom|us navy|submarine|torpedo|us |pentagon|american|navy|uss |camp |port shuaiba|kurdish|cia|pjak)\b/.test(d);
+            const isIL = /\b(iaf|f-35|idf|israeli|adir|israel)\b/.test(d);
+            if (isUS && !isIL) return ['US'];
+            if (isIL && !isUS) return ['IL'];
+            return ['US', 'IL'];
+        }
+
+        attackerColors['Live'] = '#f59e0b';
+
+        // ===== LAYER TOGGLES =====
+        const layerActive = { US: true, IL: true, Iran: true, Hezbollah: true, Israel: true, Maritime: true, Live: true };
+
+        function hexToRgba(hex, a) {
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            return `rgba(${r},${g},${b},${a})`;
+        }
+
+        function toggleLayer(key) {
+            layerActive[key] = !layerActive[key];
+            updateGlobe();
+        }
+
+        const liveStrikes = [];
+
+        // ===== FILTERING LOGIC =====
+        function isStrikeVisible(s) {
+            if (s.attacker === 'US/Israel') {
+                const keys = attributeStrike(s);
+                if (!keys.some(k => layerActive[k])) return false;
+            } else if (s.attacker === 'Live') {
+                if (!layerActive['Live']) return false;
+            } else if (!layerActive[s.attacker]) return false;
+
+            if (activeTimeFilter !== 'all') {
+                const tf = timeFilters.find(t => t.key === activeTimeFilter);
+                if (tf && tf.date) {
+                    const strikeDate = parseStrikeDate(s.date);
+                    let show = s.date.includes(tf.label) || strikeDate.getTime() === tf.date.getTime();
+                    if (!show && s.date.includes('–')) {
+                        const startDate = parseStrikeDate(s.date.split('–')[0].trim());
+                        const endDate = parseStrikeDate(s.date.split('–')[1].trim());
+                        show = tf.date >= startDate && tf.date <= endDate;
+                    }
+                    if (!show) return false;
+                }
+            }
+            return true;
+        }
+
+        function getVisibleStrikes() {
+            return strikes.filter(isStrikeVisible);
+        }
+
+        // ===== GEOJSON CONVERTERS =====
+        function strikesToGeoJSON(strikeList) {
+            return {
+                type: 'FeatureCollection',
+                features: strikeList.map((s, i) => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+                    properties: {
+                        name: s.name, attacker: s.attacker, date: s.date,
+                        details: s.details, casualties: s.casualties,
+                        killed: s.killed, injured: s.injured,
+                        color: attackerColors[s.attacker] || '#f59e0b',
+                        radius: severityScale(s.killed)
+                    }
+                }))
+            };
+        }
+
+        function labelsToGeoJSON(visibleStrikes) {
+            const labels = buildLabelsData(visibleStrikes);
+            return {
+                type: 'FeatureCollection',
+                features: labels.map(l => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [l.lng, l.lat] },
+                    properties: { text: l.text, major: l.major }
+                }))
+            };
+        }
+
+        // Pulse effect handled via circle layers only (no HTML markers)
+
+        // ===== UPDATE MAP (replaces updateGlobe) =====
+        function updateMap() {
+            const visible = getVisibleStrikes();
+            const visibleLive = liveStrikes.filter(() => layerActive['Live']);
+            const allVisible = [...visible, ...visibleLive];
+
+            const strikeSource = map.getSource('strikes');
+            if (strikeSource) strikeSource.setData(strikesToGeoJSON(allVisible));
+
+            const labelSource = map.getSource('strike-labels-src');
+            if (labelSource) labelSource.setData(labelsToGeoJSON(allVisible));
+
+        }
+        const updateGlobe = updateMap;
+
+        // ===== DATE SELECTOR (left scroll wheel) =====
+        let activeTimeFilter = 'all';
+        const dateMap = {
+            'Feb 28': new Date('2026-02-28'), 'Mar 1': new Date('2026-03-01'), 'Mar 2': new Date('2026-03-02'),
+            'Mar 3': new Date('2026-03-03'), 'Mar 4': new Date('2026-03-04'), 'Mar 5': new Date('2026-03-05'),
+            'Mar 6': new Date('2026-03-06'), 'Mar 7': new Date('2026-03-07'), 'Mar 8': new Date('2026-03-08'),
+            'Mar 9': new Date('2026-03-09'), 'Mar 10': new Date('2026-03-10'), 'Mar 11': new Date('2026-03-11'),
+            'Mar 12': new Date('2026-03-12'), 'Mar 13': new Date('2026-03-13'), 'Mar 14': new Date('2026-03-14'),
+            'Mar 16': new Date('2026-03-16'), 'Mar 17': new Date('2026-03-17'), 'Mar 18': new Date('2026-03-18'),
+            'Mar 19': new Date('2026-03-19'), 'Mar 21': new Date('2026-03-21'), 'Mar 22': new Date('2026-03-22'),
+            'Mar 23': new Date('2026-03-23'), 'Mar 24': new Date('2026-03-24'), 'Mar 25': new Date('2026-03-25'),
+            'Mar 26': new Date('2026-03-26'), 'Mar 27': new Date('2026-03-27'), 'Mar 28': new Date('2026-03-28'),
+            'Mar 29': new Date('2026-03-29'), 'Mar 30': new Date('2026-03-30'), 'Mar 31': new Date('2026-03-31'),
+            'Apr 1': new Date('2026-04-01'), 'Apr 2': new Date('2026-04-02'), 'Apr 3': new Date('2026-04-03'),
+            'Apr 4': new Date('2026-04-04'), 'Apr 5': new Date('2026-04-05'), 'Apr 6': new Date('2026-04-06')
+        };
+
+        function parseStrikeDate(dateStr) {
+            for (const key of Object.keys(dateMap).sort((a,b) => b.length - a.length)) {
+                if (dateStr.includes(key)) return dateMap[key];
+            }
+            return new Date('2026-02-28');
+        }
+
+        const timeFilters = [
+            { key: 'feb28', label: 'Feb 28', date: new Date('2026-02-28') },
+            { key: 'mar1', label: 'Mar 1', date: new Date('2026-03-01') },
+            { key: 'mar2', label: 'Mar 2', date: new Date('2026-03-02') },
+            { key: 'mar3', label: 'Mar 3', date: new Date('2026-03-03') },
+            { key: 'mar4', label: 'Mar 4', date: new Date('2026-03-04') },
+            { key: 'mar5', label: 'Mar 5', date: new Date('2026-03-05') },
+            { key: 'mar6', label: 'Mar 6', date: new Date('2026-03-06') },
+            { key: 'mar7', label: 'Mar 7', date: new Date('2026-03-07') },
+            { key: 'mar8', label: 'Mar 8', date: new Date('2026-03-08') },
+            { key: 'mar9', label: 'Mar 9', date: new Date('2026-03-09') },
+            { key: 'mar10', label: 'Mar 10', date: new Date('2026-03-10') },
+            { key: 'mar11', label: 'Mar 11', date: new Date('2026-03-11') },
+            { key: 'mar12', label: 'Mar 12', date: new Date('2026-03-12') },
+            { key: 'mar13', label: 'Mar 13', date: new Date('2026-03-13') },
+            { key: 'mar14', label: 'Mar 14', date: new Date('2026-03-14') },
+            { key: 'mar16', label: 'Mar 16', date: new Date('2026-03-16') },
+            { key: 'mar17', label: 'Mar 17', date: new Date('2026-03-17') },
+            { key: 'mar18', label: 'Mar 18', date: new Date('2026-03-18') },
+            { key: 'mar19', label: 'Mar 19', date: new Date('2026-03-19') },
+            { key: 'mar21', label: 'Mar 21', date: new Date('2026-03-21') },
+            { key: 'mar22', label: 'Mar 22', date: new Date('2026-03-22') },
+            { key: 'mar23', label: 'Mar 23', date: new Date('2026-03-23') },
+            { key: 'mar24', label: 'Mar 24', date: new Date('2026-03-24') },
+            { key: 'mar25', label: 'Mar 25', date: new Date('2026-03-25') },
+            { key: 'mar26', label: 'Mar 26', date: new Date('2026-03-26') },
+            { key: 'mar27', label: 'Mar 27', date: new Date('2026-03-27') },
+            { key: 'mar28', label: 'Mar 28', date: new Date('2026-03-28') },
+            { key: 'mar29', label: 'Mar 29', date: new Date('2026-03-29') },
+            { key: 'mar30', label: 'Mar 30', date: new Date('2026-03-30') },
+            { key: 'mar31', label: 'Mar 31', date: new Date('2026-03-31') },
+            { key: 'apr1', label: 'Apr 1', date: new Date('2026-04-01') },
+            { key: 'apr2', label: 'Apr 2', date: new Date('2026-04-02') },
+            { key: 'apr3', label: 'Apr 3', date: new Date('2026-04-03') },
+            { key: 'apr4', label: 'Apr 4', date: new Date('2026-04-04') },
+            { key: 'apr5', label: 'Apr 5', date: new Date('2026-04-05') },
+            { key: 'apr6', label: 'Apr 6', date: new Date('2026-04-06') }
+        ];
+
+        // (allMarkerLayers removed — globe uses data-driven filtering)
+
+        const dateSidebar = document.getElementById('date-sidebar');
+        const allDatePills = [];
+
+        // "ALL" button on top
+        const allBtn = document.createElement('button');
+        allBtn.id = 'date-all-btn';
+        allBtn.className = 'active';
+        allBtn.textContent = 'ALL';
+        allBtn.addEventListener('click', () => {
+            allDatePills.forEach(p => p.el.classList.remove('active'));
+            allBtn.classList.add('active');
+            activeTimeFilter = 'all';
+            applyTimeFilter();
+        });
+        dateSidebar.appendChild(allBtn);
+
+        // Scrollable date wheel
+        const dateScroll = document.createElement('div');
+        dateScroll.className = 'date-scroll';
+
+        timeFilters.forEach(tf => {
+            const pill = document.createElement('button');
+            pill.className = 'date-pill';
+            pill.textContent = tf.label;
+            allDatePills.push({ key: tf.key, el: pill });
+
+            pill.addEventListener('click', () => {
+                allDatePills.forEach(p => p.el.classList.remove('active'));
+                allBtn.classList.remove('active');
+                pill.classList.add('active');
+                activeTimeFilter = tf.key;
+                applyTimeFilter();
+                // Scroll the active pill into view
+                pill.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            });
+
+            dateScroll.appendChild(pill);
+        });
+
+        dateSidebar.appendChild(dateScroll);
+
+        function applyTimeFilter() {
+            updateGlobe();
+        }
+
+        // ===== LABELS BUILDER =====
+        const alwaysLabel = ['Tel Aviv', 'Beirut', 'Strait', 'Lincoln', 'Minab', 'Isfahan', 'Beit Shemesh', 'Kuwait', 'Doha', 'Nakhchivan', 'Bandar Abbas', 'Natanz', 'Haifa', 'Tabriz', 'Shiraz', 'Dimona', 'Bushehr', 'Mahshahr', 'Tyre', 'Kharg Island', 'Abu Dhabi', 'Bahrain'];
+
+        function buildLabelsData(visibleStrikes) {
+            const placedLabels = new Set();
+            const cityGroups = {};
+            visibleStrikes.forEach(s => {
+                const city = s.name.split('—')[0].split('(')[0].trim();
+                if (!cityGroups[city] || s.killed > cityGroups[city].killed) {
+                    cityGroups[city] = s;
+                }
+            });
+
+            const labels = [];
+            visibleStrikes.forEach(s => {
+                const labelName = s.name.split('—')[0].split('(')[0].trim();
+                if (placedLabels.has(labelName)) return;
+
+                let showLabel = false;
+                if (s.name.includes('Tehran') && s === cityGroups['Tehran']) {
+                    showLabel = true;
+                } else if (!s.name.includes('Tehran')) {
+                    showLabel = alwaysLabel.some(k => s.name.includes(k)) || (s.killed >= 10);
+                }
+
+                if (showLabel) {
+                    placedLabels.add(labelName);
+                    const displayName = s.name.includes('Tehran') ? 'Tehran' : labelName;
+                    const isMajor = ['Tehran', 'Tel Aviv', 'Beirut', 'Isfahan', 'Minab'].some(k => s.name.includes(k));
+                    labels.push({ lat: s.lat, lng: s.lng, text: displayName, major: isMajor });
+                }
+            });
+            return labels;
+        }
+
+        // ===== MAPBOX POPUP =====
+        const popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '340px', offset: 15 });
+
+        // ===== MAP LOAD — sources, layers, interactions =====
+        map.on('style.load', () => {
+            map.setFog({
+                color: 'rgb(10, 10, 10)',
+                'high-color': 'rgb(20, 20, 40)',
+                'horizon-blend': 0.08,
+                'space-color': 'rgb(10, 10, 15)',
+                'star-intensity': 0.4
+            });
+        });
+
+        let strikesLoaded = false;
+        function initMapLayers() {
+            if (map._layersInited) return;
+            if (!strikesLoaded) return;
+            map._layersInited = true;
+            // Sources
+            map.addSource('strikes', {
+                type: 'geojson',
+                data: strikesToGeoJSON(getVisibleStrikes())
+            });
+            map.addSource('strike-labels-src', {
+                type: 'geojson',
+                data: labelsToGeoJSON(getVisibleStrikes())
+            });
+
+            // Glow layer (behind circles)
+            map.addLayer({
+                id: 'strike-glow',
+                type: 'circle',
+                source: 'strikes',
+                filter: ['>', ['get', 'killed'], 0],
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'],
+                        2, ['/', ['get', 'radius'], 2],
+                        6, ['*', ['get', 'radius'], 1.5],
+                        12, ['*', ['get', 'radius'], 2.5]
+                    ],
+                    'circle-color': ['get', 'color'],
+                    'circle-opacity': 0.15,
+                    'circle-blur': 1
+                }
+            });
+
+            // Main circle markers
+            map.addLayer({
+                id: 'strike-circles',
+                type: 'circle',
+                source: 'strikes',
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'],
+                        2, ['/', ['get', 'radius'], 3],
+                        6, ['get', 'radius'],
+                        12, ['*', ['get', 'radius'], 1.5]
+                    ],
+                    'circle-color': ['get', 'color'],
+                    'circle-opacity': 0.85,
+                    'circle-stroke-color': ['get', 'color'],
+                    'circle-stroke-width': 1,
+                    'circle-stroke-opacity': 0.4
+                }
+            });
+
+            // Labels — Mapbox handles collision detection automatically
+            map.addLayer({
+                id: 'strike-labels',
+                type: 'symbol',
+                source: 'strike-labels-src',
+                layout: {
+                    'text-field': ['get', 'text'],
+                    'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'],
+                        2, ['case', ['get', 'major'], 11, 9],
+                        6, ['case', ['get', 'major'], 14, 11],
+                        12, ['case', ['get', 'major'], 16, 13]
+                    ],
+                    'text-offset': [0, 1.2],
+                    'text-anchor': 'top',
+                    'text-allow-overlap': false,
+                    'text-optional': true,
+                    'symbol-sort-key': ['case', ['get', 'major'], 0, 1]
+                },
+                paint: {
+                    'text-color': 'rgba(229, 231, 235, 0.9)',
+                    'text-halo-color': 'rgba(10, 10, 10, 0.8)',
+                    'text-halo-width': 1.5
+                }
+            });
+
+            // Click popup on markers
+            map.on('click', 'strike-circles', (e) => {
+                const p = e.features[0].properties;
+                const coords = e.features[0].geometry.coordinates.slice();
+                const color = p.color;
+                const isLive = p.attacker === 'Live';
+
+                const casualtyHtml = isLive
+                    ? `<div class="casualties" style="border-left-color:${color};background:rgba(245,158,11,0.1);color:#fbbf24">${p.casualties}</div>
+                       <div style="margin-top:6px;font-size:10px;color:#6b7280;font-style:italic;">Auto-detected from news.</div>`
+                    : `<div class="casualties">${p.casualties}</div>`;
+
+                popup.setLngLat(coords)
+                    .setHTML(`<div class="strike-popup" style="padding:14px;">
+                        <h3 style="color:${color}">${p.name}</h3>
+                        <span class="attacker-tag" style="background:${color}">${p.attacker}</span>
+                        <div class="date">${p.date}</div>
+                        <div class="details">${p.details}</div>
+                        ${casualtyHtml}
+                    </div>`)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'strike-circles', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'strike-circles', () => map.getCanvas().style.cursor = '');
+
+            // ===== COALITION LAYERS =====
+            map.addSource('countries', {
+                type: 'vector',
+                url: 'mapbox://mapbox.country-boundaries-v1'
+            });
+
+            const coalitionGroups = {
+                'us-israel': {
+                    codes: ['USA', 'ISR'],
+                    color: '#3b82f6'
+                },
+                'eu-canada': {
+                    codes: ['FRA', 'DEU', 'GBR', 'ITA', 'ESP', 'NLD', 'BEL', 'POL', 'PRT', 'GRC', 'AUT', 'SWE', 'DNK', 'FIN', 'IRL', 'CZE', 'ROU', 'HUN', 'BGR', 'HRV', 'SVK', 'SVN', 'LTU', 'LVA', 'EST', 'LUX', 'MLT', 'CYP', 'NOR', 'CHE', 'CAN'],
+                    color: '#eab308'
+                },
+                'iran-axis': {
+                    codes: ['IRN', 'RUS', 'CHN', 'IND', 'SYR', 'PRK', 'VEN', 'CUB', 'NIC', 'BLR', 'YEM'],
+                    color: '#ef4444'
+                },
+                'neutral': {
+                    codes: ['TUR', 'SAU', 'ARE', 'QAT', 'JOR', 'EGY', 'PAK', 'JPN', 'KOR', 'AUS', 'BRA', 'MEX', 'ARG', 'COL', 'IDN', 'THA', 'MYS', 'PHL', 'VNM', 'ZAF', 'NGA', 'KEN', 'ETH', 'DZA', 'MAR', 'TUN', 'IRQ', 'LBN', 'OMN', 'KWT', 'BHR', 'AFG'],
+                    color: '#6b7280'
+                }
+            };
+
+            // Add fill + line layers for each coalition (hidden by default)
+            Object.entries(coalitionGroups).forEach(([key, group]) => {
+                map.addLayer({
+                    id: `coalition-fill-${key}`,
+                    type: 'fill',
+                    source: 'countries',
+                    'source-layer': 'country_boundaries',
+                    filter: ['in', 'iso_3166_1_alpha_3', ...group.codes],
+                    paint: {
+                        'fill-color': group.color,
+                        'fill-opacity': 0.15
+                    },
+                    layout: { visibility: 'none' }
+                }, 'admin-0-boundary-bg');
+
+                map.addLayer({
+                    id: `coalition-line-${key}`,
+                    type: 'line',
+                    source: 'countries',
+                    'source-layer': 'country_boundaries',
+                    filter: ['in', 'iso_3166_1_alpha_3', ...group.codes],
+                    paint: {
+                        'line-color': group.color,
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.8, 6, 2, 12, 3],
+                        'line-opacity': 0.7
+                    },
+                    layout: { visibility: 'none' }
+                }, 'admin-0-boundary-bg');
+            });
+
+            // ===== COALITION TOGGLE LOGIC =====
+            let coalitionMode = false;
+            const coalitionLayerIds = Object.keys(coalitionGroups).flatMap(k => [`coalition-fill-${k}`, `coalition-line-${k}`]);
+            const strikeLayerIds = ['strike-glow', 'strike-circles', 'strike-labels'];
+
+            document.querySelectorAll('#coalition-toggle button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#coalition-toggle button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    coalitionMode = btn.dataset.mode === 'coalitions';
+
+                    // Toggle coalition layers
+                    coalitionLayerIds.forEach(id => {
+                        map.setLayoutProperty(id, 'visibility', coalitionMode ? 'visible' : 'none');
+                    });
+
+                    // Toggle strike layers
+                    strikeLayerIds.forEach(id => {
+                        if (map.getLayer(id)) {
+                            map.setLayoutProperty(id, 'visibility', coalitionMode ? 'none' : 'visible');
+                        }
+                    });
+
+                    // Toggle legend + date sidebar + strike counter
+                    document.getElementById('coalition-legend').classList.toggle('visible', coalitionMode);
+                    document.getElementById('date-sidebar').style.display = coalitionMode ? 'none' : '';
+                    document.getElementById('strike-counter').style.display = coalitionMode ? 'none' : '';
+                });
+            });
+
+            // Initial render
+            updateMap();
+
+            // Start news feeds
+            loadAllFeeds();
+            setInterval(loadAllFeeds, 5 * 60 * 1000);
+        }
+
+        // Load strike data from JSON files (updated hourly by GitHub Actions)
+        Promise.all([
+            fetch('/strikes.json').then(r => r.json()),
+            fetch('/totals.json').then(r => r.json())
+        ]).then(([strikesData, totalsData]) => {
+            strikes = strikesData;
+            window.__countryTolls = totalsData.countries || [];
+            strikesLoaded = true;
+            // Retry init in case map already loaded
+            initMapLayers();
+            // Build strike counter now that data is available
+            if (typeof buildStrikeCounter === 'function') buildStrikeCounter();
+        }).catch(err => {
+            console.error('Failed to load strike data:', err);
+        });
+
+        // Handle timing: load event or idle fallback
+        map.on('load', initMapLayers);
+        map.on('idle', initMapLayers);
+
+        // ===== INFO BUTTON (appended to filter bar, tooltip on body) =====
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'info-btn';
+        infoBtn.innerHTML = 'ℹ';
+        infoBtn.title = 'Map info';
+        const infoTip = document.createElement('div');
+        infoTip.className = 'info-tooltip';
+        infoTip.innerHTML = `
+            <div class="info-section-title">Marker Size = Casualties</div>
+            <div class="info-row"><div class="info-dot" style="width:22px;height:22px"></div> 100+ killed</div>
+            <div class="info-row"><div class="info-dot" style="width:16px;height:16px"></div> 20+ killed</div>
+            <div class="info-row"><div class="info-dot" style="width:11px;height:11px"></div> 1 – 19 killed</div>
+            <div class="info-row"><div class="info-dot" style="width:7px;height:7px"></div> No deaths reported</div>
+            <div class="info-sources">
+                Feb 28 – Apr 6, 2026<br>
+                Sources: Al Jazeera, Reuters, BBC,<br>NPR, CENTCOM, Wikipedia
+            </div>
+        `;
+        document.body.appendChild(infoTip);
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = infoBtn.getBoundingClientRect();
+            infoTip.style.top = (rect.bottom + 8) + 'px';
+            infoTip.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+            infoTip.classList.toggle('show');
+        });
+        document.addEventListener('click', (e) => {
+            if (!infoBtn.contains(e.target)) infoTip.classList.remove('show');
+        });
+        // Float info button on map (top-right corner)
+        infoBtn.style.cssText = 'position:absolute;top:10px;right:10px;z-index:800;';
+        document.getElementById('main').appendChild(infoBtn);
+
+        // ===== LIVE NEWS FEED =====
+        const RSS_FEEDS = [
+            { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml', color: '#ef4444' },
+            { name: 'NYT', url: 'https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml', color: '#a855f7' },
+            { name: 'AJ', url: 'https://www.aljazeera.com/xml/rss/all.xml', color: '#f59e0b' },
+            { name: 'Reuters', url: 'https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best', color: '#14b8a6' }
+        ];
+        const RSS_APIS = [
+            'https://api.rss2json.com/v1/api.json?rss_url=',
+            'https://api.allorigins.win/raw?url='
+        ];
+        let allArticles = [];
+        let activeTab = 'all';
+
+        async function fetchFeed(feed) {
+            // Try rss2json first
+            try {
+                const res = await fetch(RSS_APIS[0] + encodeURIComponent(feed.url));
+                const data = await res.json();
+                if (data.status === 'ok' && data.items && data.items.length > 0) {
+                    return data.items.map(item => ({
+                        source: feed.name,
+                        sourceColor: feed.color,
+                        title: item.title,
+                        desc: item.description || item.content || '',
+                        link: item.link,
+                        time: new Date(item.pubDate),
+                        thumb: item.thumbnail || (item.enclosure && item.enclosure.link) || ''
+                    }));
+                }
+            } catch (e) { console.warn('rss2json failed for', feed.name, e); }
+
+            // Fallback: allorigins proxy + manual XML parse
+            try {
+                const res = await fetch(RSS_APIS[1] + encodeURIComponent(feed.url));
+                const text = await res.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, 'text/xml');
+                const items = xml.querySelectorAll('item');
+                return Array.from(items).slice(0, 15).map(item => ({
+                    source: feed.name,
+                    sourceColor: feed.color,
+                    title: item.querySelector('title')?.textContent || '',
+                    desc: (item.querySelector('description')?.textContent || '').replace(/<[^>]*>/g, '').substring(0, 200),
+                    link: item.querySelector('link')?.textContent || '',
+                    time: new Date(item.querySelector('pubDate')?.textContent || Date.now()),
+                    thumb: ''
+                }));
+            } catch (e) { console.warn('Fallback failed for', feed.name, e); }
+            return [];
+        }
+
+        async function loadAllFeeds() {
+            const list = document.getElementById('news-list');
+            list.innerHTML = '<div class="news-loading">Fetching live headlines...</div>';
+            const results = await Promise.all(RSS_FEEDS.map(f => fetchFeed(f)));
+            allArticles = results.flat().sort((a, b) => b.time - a.time);
+            if (allArticles.length === 0) {
+                list.innerHTML = '<div class="news-loading">Could not load feeds. Retrying...</div>';
+                setTimeout(loadAllFeeds, 15000);
+                return;
+            }
+            renderNews();
+            document.getElementById('last-updated').textContent =
+                new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderNews() {
+            const list = document.getElementById('news-list');
+            const filtered = activeTab === 'all'
+                ? allArticles
+                : allArticles.filter(a => a.source.toLowerCase() === activeTab);
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="news-loading">No articles found</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map((a, i) => {
+                const timeStr = a.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = a.time.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                const cleanDesc = a.desc.replace(/<[^>]*>/g, '').substring(0, 120);
+                const isLatest = i === 0;
+                return `
+                    <a href="${a.link}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
+                        <div class="news-item${isLatest ? ' latest' : ''}">
+                            <div class="source-row">
+                                <span class="source-dot${isLatest ? ' newest' : ''}" style="background:${a.sourceColor}"></span>
+                                <span class="source" style="color:${a.sourceColor}">${a.source}</span>
+                            </div>
+                            <div class="title">${a.title}</div>
+                            ${cleanDesc ? `<div class="desc">${cleanDesc}</div>` : ''}
+                            <div class="time">${timeStr} · ${dateStr}</div>
+                        </div>
+                    </a>`;
+            }).join('');
+        }
+
+        function timeAgo(date) {
+            const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+            if (mins < 1) return 'Just now';
+            if (mins < 60) return mins + 'm ago';
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return hrs + 'h ago';
+            return Math.floor(hrs / 24) + 'd ago';
+        }
+
+        // Tab switching
+        document.querySelectorAll('.news-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.news-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeTab = tab.dataset.feed;
+                renderNews();
+            });
+        });
+
+        // Collapse news panel on mobile by default
+        if (window.innerWidth <= 768) {
+            document.getElementById('news-panel').classList.add('collapsed');
+            const btn = document.getElementById('news-toggle');
+            btn.classList.add('collapsed');
+            btn.querySelector('.toggle-arrow').innerHTML = '&#9654;';
+        }
+
+        // Toggle panel
+        document.getElementById('news-toggle').addEventListener('click', () => {
+            const panel = document.getElementById('news-panel');
+            const btn = document.getElementById('news-toggle');
+            panel.classList.toggle('collapsed');
+            btn.classList.toggle('collapsed');
+            btn.querySelector('.toggle-arrow').innerHTML = panel.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
+            setTimeout(() => map.resize(), 350);
+        });
+
+        // ===== AUTO-PARSER: Extract strikes from news headlines =====
+
+        const LOCATION_DB = {
+            'tehran': [35.69, 51.39], 'isfahan': [32.65, 51.67], 'shiraz': [29.59, 52.58],
+            'tabriz': [38.08, 46.29], 'mashhad': [36.30, 59.61], 'qom': [34.64, 50.88],
+            'kermanshah': [34.31, 47.07], 'ahvaz': [31.32, 48.67], 'karaj': [35.84, 50.94],
+            'bandar abbas': [27.18, 56.27], 'bushehr': [28.97, 50.84], 'minab': [27.11, 57.08],
+            'hamadan': [34.80, 48.52], 'kerman': [30.28, 57.08], 'yazd': [31.90, 54.37],
+            'zahedan': [29.50, 60.86], 'sanandaj': [35.31, 46.99], 'urmia': [37.55, 45.08],
+            'zanjan': [36.67, 48.50], 'semnan': [35.57, 53.40], 'ilam': [33.64, 46.42],
+            'lamerd': [27.34, 53.19], 'evin': [35.80, 51.39], 'damavand': [35.71, 52.07],
+            'babolsar': [36.72, 52.66],
+            'tel aviv': [32.07, 34.77], 'jerusalem': [31.77, 35.23], 'haifa': [32.79, 34.99],
+            'beit shemesh': [31.75, 34.99], 'bnei brak': [32.08, 34.83], 'ramat gan': [32.07, 34.82],
+            'ashkelon': [31.67, 34.57], 'beer sheva': [31.25, 34.79], 'netanya': [32.33, 34.86],
+            'ashdod': [31.80, 34.65], 'eilat': [29.56, 34.95], 'dimona': [31.07, 35.03],
+            'ramat david': [32.67, 35.18], 'meron': [33.00, 35.44],
+            'beirut': [33.89, 35.50], 'southern lebanon': [33.28, 35.20], 'dahieh': [33.85, 35.50],
+            'bekaa': [33.85, 36.00], 'tyre': [33.27, 35.20], 'sidon': [33.56, 35.37],
+            'baalbek': [34.01, 36.21], 'tripoli': [34.44, 35.83],
+            'bahrain': [26.07, 50.55], 'manama': [26.23, 50.59], 'juffair': [26.22, 50.59],
+            'kuwait': [29.38, 47.99], 'ali al salem': [29.35, 47.52],
+            'qatar': [25.29, 51.53], 'al udeid': [25.12, 51.32], 'doha': [25.29, 51.53],
+            'dubai': [25.20, 55.27], 'abu dhabi': [24.45, 54.65], 'al dhafra': [24.25, 54.55],
+            'jebel ali': [25.01, 55.03], 'uae': [24.47, 54.37],
+            'riyadh': [24.71, 46.68], 'ras tanura': [26.64, 50.16], 'saudi arabia': [24.71, 46.68],
+            'jeddah': [21.49, 39.19],
+            'erbil': [36.19, 44.01], 'baghdad': [33.31, 44.37], 'basra': [30.51, 47.81],
+            'amman': [31.96, 35.95], 'jordan': [31.96, 35.95],
+            'cyprus': [34.67, 33.04], 'akrotiri': [34.59, 32.99],
+            'strait of hormuz': [26.57, 56.25], 'persian gulf': [27.00, 52.00],
+            'red sea': [20.00, 38.50], 'gulf of oman': [24.50, 58.50],
+            'iran': [32.43, 53.69],
+            'sanaa': [15.35, 44.21], 'yemen': [15.55, 48.52], 'hodeidah': [14.80, 42.95],
+            'damascus': [33.51, 36.29], 'syria': [34.80, 38.99], 'aleppo': [36.20, 37.16],
+            'sri lanka': [7.87, 80.77],
+        };
+
+        const STRIKE_KEYWORDS = /\b(strike|struck|bomb|attack|missile|rocket|drone|shell|torpedo|intercept|shoot down|shot down|blast|explo|kill|dead|wound|injur|casualt|destroy|hit|target|raid|assault|barrage|salvo|launch|fire[ds]?\b)/i;
+
+        function extractCasualties(text) {
+            let killed = 0, injured = 0;
+            const killMatch = text.match(/(\d+)\s*(?:people\s+)?(?:killed|dead|die[ds]?|death|slain|perish)/i);
+            const injMatch = text.match(/(\d+)\s*(?:people\s+)?(?:injured|wounded|hurt)/i);
+            if (killMatch) killed = parseInt(killMatch[1]);
+            if (injMatch) injured = parseInt(injMatch[1]);
+            return { killed, injured };
+        }
+
+        function detectAttacker(text) {
+            const t = text.toLowerCase();
+            if (/\b(us|u\.s\.|american|pentagon|centcom)\b/.test(t) && /\b(israel|idf|iaf)\b/.test(t)) return 'US/Israel';
+            if (/\b(hezbollah|hezb)\b/.test(t)) return 'Hezbollah';
+            if (/\b(houthi|ansar\s*allah)\b/.test(t)) return 'Iran';
+            if (/\b(irgc|iran|tehran|true\s*promise)\b/.test(t) && /\b(strike|attack|launch|fire|missile|retali)/i.test(t)) return 'Iran';
+            if (/\b(israel|idf)\b/.test(t) && /\b(strike|bomb|attack|raid)\b/.test(t) && /\b(lebanon|beirut|hezbollah)\b/.test(t)) return 'Israel';
+            if (/\b(us|u\.s\.|american|israel|idf)\b/.test(t) && /\b(strike|bomb|attack|hit)\b/.test(t)) return 'US/Israel';
+            return 'Unknown';
+        }
+
+        function findLocation(text) {
+            const t = text.toLowerCase();
+            const sorted = Object.keys(LOCATION_DB).sort((a, b) => b.length - a.length);
+            for (const loc of sorted) {
+                if (t.includes(loc)) {
+                    return { name: loc.charAt(0).toUpperCase() + loc.slice(1), coords: LOCATION_DB[loc] };
+                }
+            }
+            return null;
+        }
+
+        const plottedHeadlines = new Set();
+        const curatedLocKeys = new Set(strikes.map(s => `${s.lat.toFixed(2)},${s.lng.toFixed(2)}`));
+
+        function parseAndPlotNews(articles) {
+            articles.forEach(article => {
+                const text = article.title + ' ' + (article.desc || '');
+                const titleKey = article.title.substring(0, 60);
+
+                if (plottedHeadlines.has(titleKey)) return;
+                if (!STRIKE_KEYWORDS.test(text)) return;
+
+                const location = findLocation(text);
+                if (!location) return;
+
+                const locKey = `${location.coords[0].toFixed(2)},${location.coords[1].toFixed(2)}`;
+                if (curatedLocKeys.has(locKey)) return;
+
+                const cas = extractCasualties(text);
+                const attacker = detectAttacker(text);
+
+                plottedHeadlines.add(titleKey);
+                curatedLocKeys.add(locKey);
+
+                const lat = location.coords[0] + (Math.random() - 0.5) * 0.05;
+                const lng = location.coords[1] + (Math.random() - 0.5) * 0.05;
+
+                const casualtyText = cas.killed > 0 || cas.injured > 0
+                    ? `${cas.killed > 0 ? cas.killed + ' killed' : ''}${cas.killed > 0 && cas.injured > 0 ? ', ' : ''}${cas.injured > 0 ? cas.injured + ' injured' : ''}`
+                    : 'Casualties unknown';
+
+                liveStrikes.push({
+                    name: location.name,
+                    lat, lng,
+                    attacker: 'Live',
+                    date: `${article.source} · ${timeAgo(article.time)}`,
+                    details: article.title,
+                    casualties: casualtyText,
+                    killed: cas.killed,
+                    injured: cas.injured
+                });
+            });
+            updateGlobe();
+        }
+
+        // ===== TICKER POPULATION =====
+        function populateTicker() {
+            const scroll = document.getElementById('ticker-scroll');
+            if (allArticles.length === 0) return;
+            const top = allArticles.slice(0, 10);
+            const items = top.map(a =>
+                `<a href="${a.link}" target="_blank" rel="noopener" class="ticker-item">` +
+                `<span class="ticker-source" style="color:${a.sourceColor}">${a.source}</span>` +
+                `${a.title}</a><span class="ticker-sep">●</span>`
+            ).join('');
+            scroll.innerHTML = items + items; // duplicate for seamless loop
+        }
+
+        // Hook into the feed loader
+        const _origLoadAllFeeds = loadAllFeeds;
+        loadAllFeeds = async function() {
+            await _origLoadAllFeeds();
+            parseAndPlotNews(allArticles);
+            populateTicker();
+        };
+
+        // Initial load + auto-refresh moved into map.on('load')
+
+        // ===== STRIKE COUNTER =====
+        function buildStrikeCounter() {
+            const counterEl = document.getElementById('strike-counter');
+            const counts = {};
+            let totalKilled = 0;
+            let totalInjured = 0;
+
+            let usCount = 0, ilCount = 0;
+            strikes.forEach(s => {
+                if (s.attacker === 'US/Israel') {
+                    const d = (s.details + ' ' + s.name).toLowerCase();
+                    const isUS = /\b(centcom|us navy|submarine|torpedo|us |pentagon|american|navy|uss |camp |port shuaiba|kurdish|cia|pjak)\b/.test(d);
+                    const isIL = /\b(iaf|f-35|idf|israeli|adir|israel)\b/.test(d);
+                    if (isUS && !isIL) usCount++;
+                    else if (isIL && !isUS) ilCount++;
+                    else { usCount++; ilCount++; }
+                } else {
+                    counts[s.attacker] = (counts[s.attacker] || 0) + 1;
+                }
+                totalKilled += (s.killed || 0);
+                totalInjured += (s.injured || 0);
+            });
+            counts['US'] = usCount;
+            counts['IL'] = ilCount;
+
+            const order = ['US', 'IL', 'Iran', 'Hezbollah', 'Israel', 'Maritime'];
+            const counterColors = {
+                'US': '#3b82f6',
+                'IL': '#818cf8',
+                'Iran': attackerColors['Iran'],
+                'Hezbollah': attackerColors['Hezbollah'],
+                'Israel': attackerColors['Israel'],
+                'Maritime': attackerColors['Maritime']
+            };
+            const labels = {
+                'US': '🇺🇸 United States',
+                'IL': '🇮🇱 Israel',
+                'Iran': '🇮🇷 Iran',
+                'Hezbollah': '⚡ Hezbollah',
+                'Israel': '🇮🇱 Israel (LB)',
+                'Maritime': '🚢 Maritime'
+            };
+
+            // Toggle header (always visible)
+            let html = `<div class="counter-toggle" id="counter-toggle">
+                <span class="counter-toggle-dot"></span>
+                <span class="counter-toggle-label">Strikes</span>
+                <span class="counter-toggle-count">${strikes.length}</span>
+                <span class="counter-toggle-arrow">▲</span>
+            </div>`;
+
+            // Counter keys now map directly to layer group keys
+            const layerMap = {
+                'US': 'US',
+                'IL': 'IL',
+                'Iran': 'Iran',
+                'Hezbollah': 'Hezbollah',
+                'Israel': 'Israel',
+                'Maritime': 'Maritime'
+            };
+
+            // Collapsible body
+            html += `<div class="counter-body">`;
+
+            order.forEach(key => {
+                if (!counts[key]) return;
+                const color = counterColors[key];
+                const layerKey = layerMap[key];
+                html += `<div class="counter-row" data-layer="${layerKey}" data-key="${key}">
+                    <span class="counter-label"><span class="counter-dot" style="background:${color};box-shadow:0 0 4px ${color}"></span>${labels[key]}</span>
+                    <span class="counter-value">${counts[key]}</span>
+                </div>`;
+            });
+
+            // LIVE row
+            const liveColor = attackerColors['Live'];
+            html += `<div class="counter-row" data-layer="Live" data-key="Live">
+                <span class="counter-label"><span class="counter-dot" style="background:${liveColor};box-shadow:0 0 4px ${liveColor}"></span>🔴 LIVE</span>
+                <span class="counter-value" style="font-size:10px;color:#9ca3af">AUTO</span>
+            </div>`;
+
+            html += `<div class="counter-total">
+                <span class="counter-label">Total strikes</span>
+                <span class="counter-value">${strikes.length}</span>
+            </div>`;
+
+            html += `<div class="counter-casualties">
+                <div class="counter-cas-item">
+                    <span class="counter-cas-num" style="color:#ef4444">${totalKilled.toLocaleString()}</span>
+                    <span class="counter-cas-label">Killed</span>
+                </div>
+                <div class="counter-cas-item">
+                    <span class="counter-cas-num" style="color:#f59e0b">${totalInjured.toLocaleString()}</span>
+                    <span class="counter-cas-label">Injured</span>
+                </div>
+            </div>`;
+
+            // Country death tolls loaded from totals.json (updated hourly by GitHub Actions)
+            const countryTolls = window.__countryTolls || [];
+
+            html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;font-family:'IBM Plex Mono',monospace;">Death Toll by Country</div>`;
+
+            countryTolls.forEach(c => {
+                html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:10px;">
+                    <span style="color:#9ca3af;">${c.flag} ${c.name}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:${c.color};">${c.killed} <span style="color:#6b7280;font-weight:400;font-size:9px;">/ ${c.injured}</span></span>
+                </div>`;
+            });
+
+            html += `<div style="font-size:8px;color:#4b5563;margin-top:4px;font-style:italic;">killed / injured · Sources: HRANA, Health Ministries, CENTCOM</div>`;
+            html += `</div>`;
+
+            html += `</div>`; // close counter-body
+
+            counterEl.innerHTML = html;
+
+            // Toggle expand/collapse
+            document.getElementById('counter-toggle').addEventListener('click', () => {
+                counterEl.classList.toggle('expanded');
+            });
+
+            // Click rows to toggle map layers
+            counterEl.querySelectorAll('.counter-row[data-layer]').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const layerKey = row.dataset.layer;
+                    toggleLayer(layerKey);
+                    // Update visual state for all rows sharing this layer
+                    counterEl.querySelectorAll(`.counter-row[data-layer="${layerKey}"]`).forEach(r => {
+                        r.classList.toggle('inactive', !layerActive[layerKey]);
+                    });
+                });
+            });
+
+            // Mobile: position strike counter right below the date sidebar
+            function positionCounterUnderSidebar() {
+                if (window.innerWidth > 768) return;
+                const sidebar = document.getElementById('date-sidebar');
+                if (!sidebar) return;
+                const sidebarRect = sidebar.getBoundingClientRect();
+                const mainWrap = document.getElementById('main-wrap');
+                const mainRect = mainWrap ? mainWrap.getBoundingClientRect() : { top: 0 };
+                counterEl.style.top = (sidebarRect.bottom - mainRect.top + 6) + 'px';
+            }
+            positionCounterUnderSidebar();
+            window.addEventListener('resize', positionCounterUnderSidebar);
+        }
+
+        // ===== LIVE CHAT (Supabase) =====
+        const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+            realtime: { params: { eventsPerSecond: 5 } }
+        });
+
+        // Random username generator
+        const ANIMALS = ['Hawk','Falcon','Eagle','Wolf','Fox','Bear','Tiger','Lion','Panther','Raven','Shark','Cobra','Lynx','Viper','Phoenix','Drake','Orca','Jaguar','Leopard','Owl'];
+        function generateUsername() {
+            const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+            const num = Math.floor(1000 + Math.random() * 9000);
+            return `${animal}-${num}`;
+        }
+        let chatUsername = localStorage.getItem('ww3_chat_user');
+        if (!chatUsername) {
+            chatUsername = generateUsername();
+            localStorage.setItem('ww3_chat_user', chatUsername);
+        }
+        document.getElementById('chat-username-display').textContent = chatUsername;
+
+        // Profanity filter (basic word list — extend as needed)
+        const BLOCKED_WORDS = ['nigger','faggot','kike','chink','spic','retard','tranny'];
+        function hasProfanity(text) {
+            const lower = text.toLowerCase();
+            return BLOCKED_WORDS.some(w => lower.includes(w));
+        }
+
+        // Safe text escape (XSS prevention)
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        // Render a single message
+        const chatMessagesEl = document.getElementById('chat-messages');
+        function renderMsg(msg) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            const isSelf = msg.username === chatUsername;
+            const userSpan = document.createElement('span');
+            userSpan.className = 'chat-msg-user' + (isSelf ? ' self' : '');
+            userSpan.textContent = msg.username + ':';
+            const textSpan = document.createElement('span');
+            textSpan.className = 'chat-msg-text';
+            textSpan.textContent = ' ' + msg.text;
+            div.appendChild(userSpan);
+            div.appendChild(textSpan);
+            chatMessagesEl.appendChild(div);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        // Load recent messages
+        async function loadChatHistory() {
+            const { data, error } = await sb
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) {
+                console.warn('Chat load error:', error.message);
+                const sys = document.createElement('div');
+                sys.className = 'chat-system';
+                sys.textContent = 'Could not load chat history';
+                chatMessagesEl.appendChild(sys);
+                return;
+            }
+            data.reverse().forEach(renderMsg);
+        }
+
+        // Subscribe to new messages
+        sb.channel('messages-realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+                renderMsg(payload.new);
+            })
+            .subscribe();
+
+        loadChatHistory();
+
+        // Send handler + rate limit (client-side)
+        let lastSendTime = 0;
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatError = document.getElementById('chat-error');
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            chatError.textContent = '';
+
+            if (!text) return;
+            if (text.length > 200) {
+                chatError.textContent = 'Max 200 characters';
+                return;
+            }
+            if (hasProfanity(text)) {
+                chatError.textContent = 'Message blocked';
+                return;
+            }
+            const now = Date.now();
+            if (now - lastSendTime < 3000) {
+                chatError.textContent = 'Slow down — 3 sec between messages';
+                return;
+            }
+
+            chatSend.disabled = true;
+            const { error } = await sb.from('messages').insert({ username: chatUsername, text });
+            chatSend.disabled = false;
+
+            if (error) {
+                chatError.textContent = error.message.includes('Rate limit') ? 'Rate limited' : 'Send failed';
+                return;
+            }
+            lastSendTime = now;
+            chatInput.value = '';
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+        });
+
+        // Chat panel collapse/expand
+        document.getElementById('chat-header').addEventListener('click', (e) => {
+            if (e.target.id === 'chat-input' || e.target.id === 'chat-send') return;
+            document.getElementById('chat-panel').classList.toggle('collapsed');
+        });
+
+        // On mobile, start collapsed
+        if (window.innerWidth <= 768) {
+            document.getElementById('chat-panel').classList.add('collapsed');
+        }
+
+    </script>
+</body>
+</html>
