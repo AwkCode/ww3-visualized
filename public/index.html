@@ -689,7 +689,8 @@
             border-radius: 10px;
             padding: 12px 14px;
             display: none;
-            min-width: 180px;
+            min-width: 220px;
+            max-width: 280px;
         }
         #coalition-legend.visible { display: block; }
         .legend-title {
@@ -703,15 +704,34 @@
         }
         .legend-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
-            padding: 3px 0;
+            padding: 4px 0;
         }
         .legend-dot {
             width: 10px;
             height: 10px;
             border-radius: 2px;
             flex-shrink: 0;
+            margin-top: 3px;
+        }
+        .legend-sub {
+            display: block;
+            font-size: 9px;
+            color: #6b7280;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+            margin-top: 1px;
+        }
+        .legend-footer {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 8px;
+            color: #6b7280;
+            font-style: italic;
+            text-align: center;
+            letter-spacing: 0.2px;
         }
         .legend-label {
             font-size: 11px;
@@ -1263,11 +1283,12 @@
                 <button data-mode="coalitions">Coalitions</button>
             </div>
             <div id="coalition-legend">
-                <div class="legend-title">Coalitions</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel Alliance</span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">European Union / Canada</span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span class="legend-label">Iran / Russia / China Axis</span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span class="legend-label">Neutral / Unclear</span></div>
+                <div class="legend-title">Coalition Alignments</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel <span class="legend-sub">· combatants</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">Western Bloc <span class="legend-sub">· NATO, EU, Pacific allies</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span class="legend-label">Iran Axis <span class="legend-sub">· RUS, CHN, PRK, proxies</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span class="legend-label">Non-Aligned <span class="legend-sub">· GCC, India, Turkey, Africa</span></span></div>
+                <div class="legend-footer">Based on 2026 foreign-policy posture</div>
             </div>
             <div id="strike-counter"></div>
             <div id="date-sidebar"></div>
@@ -1974,21 +1995,94 @@
                 url: 'mapbox://mapbox.country-boundaries-v1'
             });
 
+            // ===== COALITION ALIGNMENTS (2026 Scenario) =====
+            // ISO 3166-1 alpha-3 codes. Each country appears in exactly one group.
+            // Alignments reflect real-world foreign policy posture as of early 2026,
+            // filtered through the lens of a US/Israel vs Iran conflict.
             const coalitionGroups = {
+                // Primary combatants — US and Israel directly conducting strikes.
                 'us-israel': {
                     codes: ['USA', 'ISR'],
                     color: '#3b82f6'
                 },
-                'eu-canada': {
-                    codes: ['FRA', 'DEU', 'GBR', 'ITA', 'ESP', 'NLD', 'BEL', 'POL', 'PRT', 'GRC', 'AUT', 'SWE', 'DNK', 'FIN', 'IRL', 'CZE', 'ROU', 'HUN', 'BGR', 'HRV', 'SVK', 'SVN', 'LTU', 'LVA', 'EST', 'LUX', 'MLT', 'CYP', 'NOR', 'CHE', 'CAN'],
+                // Western Bloc — NATO, EU, Five Eyes, major Pacific allies. These nations
+                // back US/Israel diplomatically, share intelligence, and in some cases
+                // contribute logistics, airspace, or materiel (UK, France, Germany, etc.).
+                'western-allies': {
+                    codes: [
+                        // NATO Europe
+                        'GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'PRT', 'NLD', 'BEL', 'LUX',
+                        'DNK', 'NOR', 'ISL', 'GRC', 'POL', 'CZE', 'SVK', 'SVN', 'HRV',
+                        'ROU', 'BGR', 'HUN', 'EST', 'LVA', 'LTU', 'ALB', 'MNE', 'MKD',
+                        'FIN', 'SWE',
+                        // EU non-NATO
+                        'IRL', 'AUT', 'CYP', 'MLT',
+                        // Other Western Europe
+                        'CHE',
+                        // North America
+                        'CAN',
+                        // Indo-Pacific allies (US mutual-defense treaties + AUKUS + Quad-leaning)
+                        'AUS', 'NZL', 'JPN', 'KOR', 'PHL', 'TWN',
+                        // Pro-West Eastern Europe / EU candidates
+                        'UKR', 'MDA', 'XKX', 'KOS',
+                        // Latin America (strongly pro-West governments)
+                        'ARG'
+                    ],
                     color: '#eab308'
                 },
+                // Iran Axis — Iran, direct combatants, active proxies, and strategic
+                // backers. Includes Russia/China (materiel + diplomatic cover), North Korea
+                // (missile tech), Syria (client), Lebanon/Yemen (Hezbollah/Houthi territory),
+                // Latin American ALBA bloc, and Russia-aligned African juntas.
                 'iran-axis': {
-                    codes: ['IRN', 'RUS', 'CHN', 'IND', 'SYR', 'PRK', 'VEN', 'CUB', 'NIC', 'BLR', 'YEM'],
+                    codes: [
+                        // Core
+                        'IRN', 'SYR', 'LBN', 'YEM',
+                        // Great power backers
+                        'RUS', 'CHN', 'PRK', 'BLR',
+                        // ALBA / Latin American anti-US bloc
+                        'VEN', 'CUB', 'NIC', 'BOL',
+                        // Russia-aligned African juntas (Wagner / Africa Corps presence)
+                        'MLI', 'BFA', 'NER', 'CAF',
+                        // Other isolated/anti-Western
+                        'ERI', 'MMR'
+                    ],
                     color: '#ef4444'
                 },
+                // Neutral / Non-Aligned — every other country. Includes the GCC (Saudi,
+                // UAE, Qatar, Bahrain, Kuwait, Oman — hedging between US security and Iran
+                // detente), Arab states, South & SE Asia (India, Pakistan, Indonesia...),
+                // Central Asia, most of Africa, most of Latin America, and Turkey.
                 'neutral': {
-                    codes: ['TUR', 'SAU', 'ARE', 'QAT', 'JOR', 'EGY', 'PAK', 'JPN', 'KOR', 'AUS', 'BRA', 'MEX', 'ARG', 'COL', 'IDN', 'THA', 'MYS', 'PHL', 'VNM', 'ZAF', 'NGA', 'KEN', 'ETH', 'DZA', 'MAR', 'TUN', 'IRQ', 'LBN', 'OMN', 'KWT', 'BHR', 'AFG'],
+                    codes: [
+                        // Turkey — NATO but pragmatic/non-aligned in this conflict
+                        'TUR',
+                        // GCC + Levant + North Africa
+                        'SAU', 'ARE', 'QAT', 'BHR', 'KWT', 'OMN',
+                        'JOR', 'EGY', 'IRQ', 'PSE',
+                        'MAR', 'TUN', 'DZA', 'LBY', 'SDN', 'SSD', 'MRT', 'DJI', 'SOM',
+                        // Balkans non-aligned
+                        'SRB', 'BIH',
+                        // Central Asia / Caucasus
+                        'KAZ', 'UZB', 'TKM', 'KGZ', 'TJK', 'AZE', 'ARM', 'MNG', 'GEO',
+                        // South Asia (non-aligned, hedging)
+                        'IND', 'PAK', 'BGD', 'LKA', 'NPL', 'BTN', 'AFG', 'MDV',
+                        // Southeast Asia
+                        'IDN', 'MYS', 'THA', 'VNM', 'SGP', 'KHM', 'LAO', 'BRN', 'TLS',
+                        // Sub-Saharan Africa (not in Iran-axis)
+                        'NGA', 'KEN', 'ETH', 'TZA', 'UGA', 'RWA', 'BDI', 'COD', 'COG',
+                        'CMR', 'GAB', 'GNQ', 'STP', 'AGO', 'ZMB', 'MWI', 'MOZ', 'ZWE',
+                        'BWA', 'NAM', 'ZAF', 'SWZ', 'LSO', 'MDG', 'MUS', 'SYC', 'COM',
+                        'TCD', 'SEN', 'GMB', 'GIN', 'GNB', 'SLE', 'LBR', 'CIV', 'TGO',
+                        'BEN', 'GHA', 'CPV',
+                        // Latin America (not in Iran-axis, not strongly pro-West)
+                        'MEX', 'GTM', 'BLZ', 'HND', 'SLV', 'CRI', 'PAN', 'COL', 'ECU',
+                        'PER', 'BRA', 'CHL', 'URY', 'PRY', 'GUY', 'SUR',
+                        'HTI', 'DOM', 'JAM', 'TTO', 'BHS', 'BRB',
+                        // Oceania
+                        'PNG', 'FJI', 'SLB', 'VUT', 'WSM', 'TON', 'KIR', 'TUV', 'NRU',
+                        'PLW', 'FSM', 'MHL'
+                    ],
                     color: '#6b7280'
                 }
             };
