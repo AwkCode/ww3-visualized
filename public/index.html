@@ -107,7 +107,7 @@
             flex-direction: column;
             align-items: center;
             position: absolute;
-            left: 10px;
+            right: 16px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 800;
@@ -117,6 +117,7 @@
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 12px;
             overflow: hidden;
+            transition: right 0.3s ease;
         }
         #date-all-btn {
             width: 100%;
@@ -231,6 +232,13 @@
         #news-panel.collapsed {
             width: 0;
             border-left: none;
+        }
+        /* When news panel is collapsed, shift the date sidebar rightward */
+        #main.news-collapsed #date-sidebar {
+            right: 16px;
+        }
+        #main:not(.news-collapsed) #date-sidebar {
+            right: 356px;
         }
         .news-header {
             padding: 10px 14px;
@@ -718,7 +726,7 @@
         #chat-panel {
             position: fixed;
             bottom: 18px;
-            right: 18px;
+            left: 18px;
             width: 320px;
             max-height: 460px;
             z-index: 1100;
@@ -860,7 +868,8 @@
         @media (max-width: 768px) {
             #chat-panel {
                 bottom: 6px;
-                right: 6px;
+                left: 6px;
+                right: auto;
                 width: calc(100vw - 12px);
                 max-width: 360px;
                 max-height: 55vh;
@@ -1510,6 +1519,9 @@
 
         function applyTimeFilter() {
             updateGlobe();
+            if (typeof renderNews === 'function' && typeof allArticles !== 'undefined' && allArticles.length) {
+                renderNews();
+            }
         }
 
         // ===== LABELS BUILDER =====
@@ -1880,12 +1892,28 @@
 
         function renderNews() {
             const list = document.getElementById('news-list');
-            const filtered = activeTab === 'all'
+            let filtered = activeTab === 'all'
                 ? allArticles
                 : allArticles.filter(a => a.source.toLowerCase() === activeTab);
 
+            // Also filter by the selected date from the scroll wheel
+            if (activeTimeFilter !== 'all') {
+                const tf = timeFilters.find(t => t.key === activeTimeFilter);
+                if (tf && tf.date) {
+                    const startOfDay = new Date(tf.date);
+                    startOfDay.setHours(0, 0, 0, 0);
+                    const endOfDay = new Date(startOfDay);
+                    endOfDay.setDate(endOfDay.getDate() + 1);
+                    filtered = filtered.filter(a => {
+                        const t = a.time.getTime();
+                        return t >= startOfDay.getTime() && t < endOfDay.getTime();
+                    });
+                }
+            }
+
             if (filtered.length === 0) {
-                list.innerHTML = '<div class="news-loading">No articles found</div>';
+                const dateLabel = activeTimeFilter === 'all' ? '' : ' for ' + (timeFilters.find(t => t.key === activeTimeFilter)?.label || '');
+                list.innerHTML = `<div class="news-loading">No articles found${dateLabel}</div>`;
                 return;
             }
 
@@ -1937,14 +1965,20 @@
         }
 
         // Toggle panel
+        function syncNewsCollapsed() {
+            const collapsed = document.getElementById('news-panel').classList.contains('collapsed');
+            document.getElementById('main').classList.toggle('news-collapsed', collapsed);
+        }
         document.getElementById('news-toggle').addEventListener('click', () => {
             const panel = document.getElementById('news-panel');
             const btn = document.getElementById('news-toggle');
             panel.classList.toggle('collapsed');
             btn.classList.toggle('collapsed');
             btn.querySelector('.toggle-arrow').innerHTML = panel.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
+            syncNewsCollapsed();
             setTimeout(() => map.resize(), 350);
         });
+        syncNewsCollapsed();
 
         // ===== AUTO-PARSER: Extract strikes from news headlines =====
 
