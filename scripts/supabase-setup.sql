@@ -95,5 +95,34 @@ create trigger rate_limit_check
 -- =====================================================
 alter publication supabase_realtime add table messages;
 
+-- =====================================================
+-- News archive table — populated hourly by GitHub Actions
+-- Frontend queries this for past-date news
+-- =====================================================
+drop table if exists news_archive;
+
+create table news_archive (
+    id bigserial primary key,
+    source text not null,
+    source_color text,
+    title text not null,
+    description text,
+    link text unique not null,
+    pub_date timestamptz not null,
+    thumb text,
+    created_at timestamptz default now() not null
+);
+
+create index news_archive_pub_date_idx on news_archive (pub_date desc);
+create index news_archive_day_idx on news_archive (date_trunc('day', pub_date));
+
+alter table news_archive enable row level security;
+
+create policy "public can read news archive"
+    on news_archive for select using (true);
+
+create policy "public can insert news archive"
+    on news_archive for insert with check (true);
+
 -- Done!
-select 'Setup complete. Messages table ready with RLS, pruning, and rate limiting.' as status;
+select 'Setup complete. Messages + news_archive tables ready.' as status;

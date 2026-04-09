@@ -32,6 +32,8 @@ jobs:
         run: node scripts/update-data.js
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Commit & push changes
         run: |

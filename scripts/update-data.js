@@ -15,6 +15,59 @@ if (!GROQ_API_KEY) {
     process.exit(1);
 }
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+// Source color mapping (matches frontend)
+const SOURCE_COLORS = {
+    'BBC': '#ef4444',
+    'NYT': '#a855f7',
+    'AJ': '#f59e0b',
+    'Reuters': '#14b8a6'
+};
+
+// Archive articles to Supabase news_archive table
+async function archiveArticles(articles) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.log('  (Skipping archive — Supabase env vars not set)');
+        return;
+    }
+    const rows = articles
+        .filter(a => a.title && a.pubDate)
+        .map(a => ({
+            source: a.source,
+            source_color: SOURCE_COLORS[a.source] || '#8b5cf6',
+            title: a.title.slice(0, 500),
+            description: (a.desc || '').slice(0, 1000),
+            link: (a.link || '').slice(0, 2000),
+            pub_date: new Date(a.pubDate).toISOString(),
+            thumb: (a.thumb || '').slice(0, 2000)
+        }))
+        .filter(r => r.link && r.link !== '');
+
+    if (rows.length === 0) return;
+
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/news_archive?on_conflict=link`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=ignore-duplicates,return=minimal'
+            },
+            body: JSON.stringify(rows)
+        });
+        if (!res.ok) {
+            console.warn(`  Archive failed: ${res.status} ${await res.text()}`);
+        } else {
+            console.log(`  Archived ${rows.length} articles to Supabase`);
+        }
+    } catch (e) {
+        console.warn('  Archive error:', e.message);
+    }
+}
+
 const STRIKES_PATH = path.join(__dirname, '..', 'public', 'strikes.json');
 const TOTALS_PATH = path.join(__dirname, '..', 'public', 'totals.json');
 
@@ -36,7 +89,9 @@ async function fetchFeed(feed) {
             source: feed.name,
             title: item.title || '',
             desc: (item.description || '').replace(/<[^>]*>/g, '').substring(0, 300),
-            pubDate: item.pubDate
+            pubDate: item.pubDate,
+            link: item.link || '',
+            thumb: item.thumbnail || (item.enclosure && item.enclosure.link) || ''
         }));
     } catch (e) {
         console.warn(`Feed ${feed.name} failed:`, e.message);
@@ -100,6 +155,9 @@ async function main() {
         console.log('No articles fetched, skipping update');
         return;
     }
+
+    // Archive all articles to Supabase (dedup by link)
+    await archiveArticles(articles);
 
     // Keep only articles from the last 3 days
     const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
