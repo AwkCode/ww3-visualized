@@ -1887,6 +1887,51 @@
                 new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        // Cache historical news fetched from GDELT keyed by date string
+        const historicalNewsCache = {};
+        const pendingHistoricalFetches = {};
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        async function fetchHistoricalNews(date) {
+            const y = date.getFullYear();
+            const m = pad2(date.getMonth() + 1);
+            const d = pad2(date.getDate());
+            const cacheKey = `${y}-${m}-${d}`;
+            if (historicalNewsCache[cacheKey]) return historicalNewsCache[cacheKey];
+            if (pendingHistoricalFetches[cacheKey]) return pendingHistoricalFetches[cacheKey];
+
+            const start = `${y}${m}${d}000000`;
+            const end = `${y}${m}${d}235959`;
+            const query = encodeURIComponent('(iran AND (israel OR strike OR war OR missile)) sourcelang:eng');
+            const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=ArtList&format=json&maxrecords=30&sort=hybridrel&startdatetime=${start}&enddatetime=${end}`;
+
+            pendingHistoricalFetches[cacheKey] = fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const arts = (data.articles || []).map(a => ({
+                        source: (a.domain || 'News').split('.')[0].toUpperCase().slice(0, 6),
+                        sourceColor: '#8b5cf6',
+                        title: a.title || '',
+                        desc: '',
+                        link: a.url || '#',
+                        time: new Date(a.seendate ? a.seendate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z') : date.toISOString()),
+                        thumb: a.socialimage || '',
+                        _historical: true
+                    }));
+                    historicalNewsCache[cacheKey] = arts;
+                    delete pendingHistoricalFetches[cacheKey];
+                    return arts;
+                })
+                .catch(err => {
+                    console.warn('GDELT fetch failed:', err);
+                    historicalNewsCache[cacheKey] = [];
+                    delete pendingHistoricalFetches[cacheKey];
+                    return [];
+                });
+            return pendingHistoricalFetches[cacheKey];
+        }
+
         function renderNews() {
             const list = document.getElementById('news-list');
             let filtered = activeTab === 'all'
@@ -1894,9 +1939,13 @@
                 : allArticles.filter(a => a.source.toLowerCase() === activeTab);
 
             // Also filter by the selected date from the scroll wheel
+            let dateFilterActive = false;
+            let selectedDate = null;
             if (activeTimeFilter !== 'all') {
                 const tf = timeFilters.find(t => t.key === activeTimeFilter);
                 if (tf && tf.date) {
+                    dateFilterActive = true;
+                    selectedDate = tf.date;
                     const startOfDay = new Date(tf.date);
                     startOfDay.setHours(0, 0, 0, 0);
                     const endOfDay = new Date(startOfDay);
@@ -1908,8 +1957,34 @@
                 }
             }
 
+            // Add cached historical articles if date filter is active
+            if (dateFilterActive && selectedDate) {
+                const y = selectedDate.getFullYear();
+                const m = pad2(selectedDate.getMonth() + 1);
+                const d = pad2(selectedDate.getDate());
+                const cacheKey = `${y}-${m}-${d}`;
+                const hist = historicalNewsCache[cacheKey];
+                if (hist && hist.length) {
+                    // Merge, dedupe by link
+                    const seen = new Set(filtered.map(a => a.link));
+                    hist.forEach(a => { if (!seen.has(a.link)) filtered.push(a); });
+                    filtered.sort((a, b) => b.time - a.time);
+                }
+            }
+
             if (filtered.length === 0) {
                 const dateLabel = activeTimeFilter === 'all' ? '' : ' for ' + (timeFilters.find(t => t.key === activeTimeFilter)?.label || '');
+                // If this is a past date and we haven't tried yet, fetch from GDELT
+                if (dateFilterActive && selectedDate) {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    if (selectedDate.getTime() < today.getTime()) {
+                        list.innerHTML = `<div class="news-loading">Searching archive${dateLabel}...</div>`;
+                        fetchHistoricalNews(selectedDate).then(() => {
+                            if (activeTimeFilter !== 'all') renderNews();
+                        });
+                        return;
+                    }
+                }
                 list.innerHTML = `<div class="news-loading">No articles found${dateLabel}</div>`;
                 return;
             }
@@ -1919,12 +1994,14 @@
                 const dateStr = a.time.toLocaleDateString([], { month: 'short', day: 'numeric' });
                 const cleanDesc = a.desc.replace(/<[^>]*>/g, '').substring(0, 120);
                 const isLatest = i === 0;
+                const archiveBadge = a._historical ? `<span style="font-size:8px;color:#8b5cf6;margin-left:4px;letter-spacing:0.5px;">ARCHIVE</span>` : '';
                 return `
                     <a href="${a.link}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
                         <div class="news-item${isLatest ? ' latest' : ''}">
                             <div class="source-row">
                                 <span class="source-dot${isLatest ? ' newest' : ''}" style="background:${a.sourceColor}"></span>
                                 <span class="source" style="color:${a.sourceColor}">${a.source}</span>
+                                ${archiveBadge}
                             </div>
                             <div class="title">${a.title}</div>
                             ${cleanDesc ? `<div class="desc">${cleanDesc}</div>` : ''}
