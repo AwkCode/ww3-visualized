@@ -2066,5 +2066,27 @@
     "casualties": "More than 250 killed",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Sidon — Religious Complex",
+    "lat": 33.5639,
+    "lng": 35.3664,
+    "attacker": "Israel",
+    "date": "Apr 9, 2026",
+    "details": "Israeli strikes flattened a religious complex",
+    "casualties": "Unknown",
+    "killed": 0,
+    "injured": 0
+  },
+  {
+    "name": "Gaza — Various Targets",
+    "lat": 31.5,
+    "lng": 34.4667,
+    "attacker": "Israel",
+    "date": "Apr 9, 2026",
+    "details": "Israel bombed Gaza on 36 of the past 40 days",
+    "casualties": "107 killed",
+    "killed": 107,
+    "injured": 0
   }
 ]
