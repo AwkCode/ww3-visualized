@@ -1284,8 +1284,7 @@
             </div>
             <div id="coalition-legend">
                 <div class="legend-title">Coalition Alignments</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel <span class="legend-sub">· primary combatants</span></span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><span class="legend-label">Active Coalition <span class="legend-sub">· UK, FR, JOR, DE, AUS, NL</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel Coalition <span class="legend-sub">· US, IL, UK, FR, JOR, DE, AUS, NL</span></span></div>
                 <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div><span class="legend-label">Host Nations <span class="legend-sub">· GCC bases, Cyprus, Turkey</span></span></div>
                 <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">Western Bloc <span class="legend-sub">· rest of NATO, EU, Pacific</span></span></div>
                 <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span class="legend-label">Iran Axis <span class="legend-sub">· RUS, CHN, PRK, proxies</span></span></div>
@@ -1999,29 +1998,26 @@
 
             // ===== COALITION ALIGNMENTS (2026 Scenario) =====
             // ISO 3166-1 alpha-3 codes. Each country appears in exactly one group.
-            // Six-tier structure reflects actual 2024–2026 posture, from direct
+            // Five-tier structure reflects actual 2024–2026 posture, from direct
             // combatants to non-aligned states, based on real interception events,
             // basing agreements, and diplomatic alignments.
             const coalitionGroups = {
-                // TIER 1 — Primary combatants conducting offensive strikes.
-                'us-israel': {
-                    codes: ['USA', 'ISR'],
-                    color: '#3b82f6'
-                },
-                // TIER 2 — Active military participants. Confirmed to have engaged
-                // in interception operations against Iranian munitions (April &
-                // October 2024 precedent) or deployed combat assets in-theatre.
+                // TIER 1 — US/Israel Coalition. Primary combatants (US, Israel) plus
+                // every country that has actively fired weapons in support of the
+                // campaign — whether offensive strikes on Iran or defensive
+                // interception of Iranian munitions aimed at Israel.
+                //  · USA & Israel — offensive strikes on Iran
                 //  · UK — RAF Typhoons intercepted drones over Iraq/Syria; Akrotiri strikes
                 //  · France — Rafales intercepted drones; Camp de la Paix UAE; CdG carrier
                 //  · Jordan — Jordanian F-16s + Patriots shot down Iranian drones
                 //  · Germany — Patriot batteries deployed to Jordan/Slovakia
                 //  · Australia — RAN destroyers in Red Sea anti-Houthi operations
                 //  · Netherlands — F-35 coalition contributions, Eastern Med
-                'active-coalition': {
-                    codes: ['GBR', 'FRA', 'JOR', 'DEU', 'AUS', 'NLD'],
-                    color: '#a855f7'
+                'us-israel': {
+                    codes: ['USA', 'ISR', 'GBR', 'FRA', 'JOR', 'DEU', 'AUS', 'NLD'],
+                    color: '#3b82f6'
                 },
-                // TIER 3 — Host / basing nations. Not combatants, but provide the
+                // TIER 2 — Host / basing nations. Not combatants, but provide the
                 // airspace, bases, and radar coverage that make US operations possible.
                 // Publicly "neutral" but strategically essential to the campaign.
                 //  · Qatar — Al Udeid Air Base (CENTCOM forward HQ)
@@ -2038,7 +2034,7 @@
                     codes: ['QAT', 'BHR', 'KWT', 'ARE', 'SAU', 'OMN', 'CYP', 'TUR', 'DJI', 'IRQ'],
                     color: '#06b6d4'
                 },
-                // TIER 4 — Western Bloc. Diplomatic, financial, and intelligence
+                // TIER 3 — Western Bloc. Diplomatic, financial, and intelligence
                 // support. Back US/Israel in the UN and via sanctions but do not
                 // contribute combat assets. Remaining NATO + EU + Pacific allies.
                 'western-allies': {
@@ -2063,7 +2059,7 @@
                     ],
                     color: '#eab308'
                 },
-                // TIER 5 — Iran Axis. Direct combatants, proxies, and strategic backers.
+                // TIER 4 — Iran Axis. Direct combatants, proxies, and strategic backers.
                 'iran-axis': {
                     codes: [
                         // Core
@@ -2079,7 +2075,7 @@
                     ],
                     color: '#ef4444'
                 },
-                // TIER 6 — Non-Aligned. Everyone else: neutral, hedging, or civil-war states.
+                // TIER 5 — Non-Aligned. Everyone else: neutral, hedging, or civil-war states.
                 'neutral': {
                     codes: [
                         // Arab states (minus Tier 3 host nations and Tier 2 Jordan)
