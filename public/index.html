@@ -142,41 +142,64 @@
             display: flex;
             flex-direction: column;
             gap: 0;
-            max-height: 420px;
+            height: 280px;
             overflow-y: auto;
             scroll-snap-type: y mandatory;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(239,68,68,0.3) transparent;
-            padding: 4px 0;
-            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
-            mask-image: linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+            scrollbar-width: none;
+            padding: 0;
+            position: relative;
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
+            scroll-behavior: smooth;
         }
-        .date-scroll::-webkit-scrollbar { width: 3px; }
-        .date-scroll::-webkit-scrollbar-track { background: transparent; }
-        .date-scroll::-webkit-scrollbar-thumb { background: rgba(239,68,68,0.3); border-radius: 3px; }
-        .date-scroll::-webkit-scrollbar-thumb:hover { background: rgba(239,68,68,0.5); }
+        .date-scroll::-webkit-scrollbar { width: 0; display: none; }
+        .date-spacer {
+            flex-shrink: 0;
+            height: 120px;
+            pointer-events: none;
+        }
         .date-pill {
-            padding: 6px 10px;
+            padding: 5px 14px;
             border: none;
             background: transparent;
-            color: rgba(255,255,255,0.35);
-            font-size: 10px;
+            color: rgba(255,255,255,0.85);
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             font-family: 'IBM Plex Mono', monospace;
             white-space: nowrap;
-            transition: all 0.15s;
             text-align: center;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.4px;
             scroll-snap-align: center;
             flex-shrink: 0;
+            height: 26px;
+            line-height: 16px;
+            transform-origin: center;
+            transition: color 0.15s, background 0.15s;
+            will-change: transform, opacity;
         }
-        .date-pill:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.04); }
+        .date-pill:hover { color: #fff; }
         .date-pill.active {
-            background: rgba(239,68,68,0.15);
-            color: #fff;
+            color: #ef4444;
             font-weight: 700;
         }
+        /* iOS-style center indicator line */
+        #date-sidebar {
+            position: relative;
+        }
+        #date-sidebar::before,
+        #date-sidebar::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            height: 1px;
+            background: rgba(239,68,68,0.25);
+            z-index: 1;
+            pointer-events: none;
+        }
+        #date-sidebar::before { top: calc(50% - 13px + 18px); }
+        #date-sidebar::after { top: calc(50% + 13px + 18px); }
 
         /* ===== LAYOUT ===== */
         #main-wrap {
@@ -875,11 +898,11 @@
                 left: 6px;
                 top: 50px;
                 border-radius: 10px;
-                max-height: calc(100vh - 180px);
             }
             #date-all-btn { padding: 5px 7px; font-size: 8px; }
-            .date-scroll { max-height: 200px; }
-            .date-pill { padding: 5px 7px; font-size: 9px; }
+            .date-scroll { height: 210px; }
+            .date-spacer { height: 90px; }
+            .date-pill { padding: 4px 10px; font-size: 11px; }
             #strike-counter {
                 bottom: auto;
                 left: 6px;
@@ -1311,22 +1334,30 @@
         }
         const updateGlobe = updateMap;
 
-        // ===== DATE SELECTOR (left scroll wheel) =====
+        // ===== DATE SELECTOR (iOS-style scroll wheel) =====
         let activeTimeFilter = 'all';
-        const dateMap = {
-            'Feb 28': new Date('2026-02-28'), 'Mar 1': new Date('2026-03-01'), 'Mar 2': new Date('2026-03-02'),
-            'Mar 3': new Date('2026-03-03'), 'Mar 4': new Date('2026-03-04'), 'Mar 5': new Date('2026-03-05'),
-            'Mar 6': new Date('2026-03-06'), 'Mar 7': new Date('2026-03-07'), 'Mar 8': new Date('2026-03-08'),
-            'Mar 9': new Date('2026-03-09'), 'Mar 10': new Date('2026-03-10'), 'Mar 11': new Date('2026-03-11'),
-            'Mar 12': new Date('2026-03-12'), 'Mar 13': new Date('2026-03-13'), 'Mar 14': new Date('2026-03-14'),
-            'Mar 16': new Date('2026-03-16'), 'Mar 17': new Date('2026-03-17'), 'Mar 18': new Date('2026-03-18'),
-            'Mar 19': new Date('2026-03-19'), 'Mar 21': new Date('2026-03-21'), 'Mar 22': new Date('2026-03-22'),
-            'Mar 23': new Date('2026-03-23'), 'Mar 24': new Date('2026-03-24'), 'Mar 25': new Date('2026-03-25'),
-            'Mar 26': new Date('2026-03-26'), 'Mar 27': new Date('2026-03-27'), 'Mar 28': new Date('2026-03-28'),
-            'Mar 29': new Date('2026-03-29'), 'Mar 30': new Date('2026-03-30'), 'Mar 31': new Date('2026-03-31'),
-            'Apr 1': new Date('2026-04-01'), 'Apr 2': new Date('2026-04-02'), 'Apr 3': new Date('2026-04-03'),
-            'Apr 4': new Date('2026-04-04'), 'Apr 5': new Date('2026-04-05'), 'Apr 6': new Date('2026-04-06')
-        };
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        // Build date list from Feb 28, 2026 through today (regenerates on each page load)
+        function buildTimeFilters() {
+            const start = new Date('2026-02-28T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const filters = [];
+            const map = {};
+            for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+                const m = MONTH_NAMES[d.getMonth()];
+                const day = d.getDate();
+                const label = `${m} ${day}`;
+                const key = label.toLowerCase().replace(' ', '');
+                const dateCopy = new Date(d);
+                filters.push({ key, label, date: dateCopy });
+                map[label] = dateCopy;
+            }
+            return { filters, map };
+        }
+
+        let { filters: timeFilters, map: dateMap } = buildTimeFilters();
 
         function parseStrikeDate(dateStr) {
             for (const key of Object.keys(dateMap).sort((a,b) => b.length - a.length)) {
@@ -1335,87 +1366,147 @@
             return new Date('2026-02-28');
         }
 
-        const timeFilters = [
-            { key: 'feb28', label: 'Feb 28', date: new Date('2026-02-28') },
-            { key: 'mar1', label: 'Mar 1', date: new Date('2026-03-01') },
-            { key: 'mar2', label: 'Mar 2', date: new Date('2026-03-02') },
-            { key: 'mar3', label: 'Mar 3', date: new Date('2026-03-03') },
-            { key: 'mar4', label: 'Mar 4', date: new Date('2026-03-04') },
-            { key: 'mar5', label: 'Mar 5', date: new Date('2026-03-05') },
-            { key: 'mar6', label: 'Mar 6', date: new Date('2026-03-06') },
-            { key: 'mar7', label: 'Mar 7', date: new Date('2026-03-07') },
-            { key: 'mar8', label: 'Mar 8', date: new Date('2026-03-08') },
-            { key: 'mar9', label: 'Mar 9', date: new Date('2026-03-09') },
-            { key: 'mar10', label: 'Mar 10', date: new Date('2026-03-10') },
-            { key: 'mar11', label: 'Mar 11', date: new Date('2026-03-11') },
-            { key: 'mar12', label: 'Mar 12', date: new Date('2026-03-12') },
-            { key: 'mar13', label: 'Mar 13', date: new Date('2026-03-13') },
-            { key: 'mar14', label: 'Mar 14', date: new Date('2026-03-14') },
-            { key: 'mar16', label: 'Mar 16', date: new Date('2026-03-16') },
-            { key: 'mar17', label: 'Mar 17', date: new Date('2026-03-17') },
-            { key: 'mar18', label: 'Mar 18', date: new Date('2026-03-18') },
-            { key: 'mar19', label: 'Mar 19', date: new Date('2026-03-19') },
-            { key: 'mar21', label: 'Mar 21', date: new Date('2026-03-21') },
-            { key: 'mar22', label: 'Mar 22', date: new Date('2026-03-22') },
-            { key: 'mar23', label: 'Mar 23', date: new Date('2026-03-23') },
-            { key: 'mar24', label: 'Mar 24', date: new Date('2026-03-24') },
-            { key: 'mar25', label: 'Mar 25', date: new Date('2026-03-25') },
-            { key: 'mar26', label: 'Mar 26', date: new Date('2026-03-26') },
-            { key: 'mar27', label: 'Mar 27', date: new Date('2026-03-27') },
-            { key: 'mar28', label: 'Mar 28', date: new Date('2026-03-28') },
-            { key: 'mar29', label: 'Mar 29', date: new Date('2026-03-29') },
-            { key: 'mar30', label: 'Mar 30', date: new Date('2026-03-30') },
-            { key: 'mar31', label: 'Mar 31', date: new Date('2026-03-31') },
-            { key: 'apr1', label: 'Apr 1', date: new Date('2026-04-01') },
-            { key: 'apr2', label: 'Apr 2', date: new Date('2026-04-02') },
-            { key: 'apr3', label: 'Apr 3', date: new Date('2026-04-03') },
-            { key: 'apr4', label: 'Apr 4', date: new Date('2026-04-04') },
-            { key: 'apr5', label: 'Apr 5', date: new Date('2026-04-05') },
-            { key: 'apr6', label: 'Apr 6', date: new Date('2026-04-06') }
-        ];
+        // At midnight local time, rebuild the date list so a new day appears automatically
+        function scheduleMidnightRefresh() {
+            const now = new Date();
+            const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 30);
+            const msUntilMidnight = nextMidnight - now;
+            setTimeout(() => {
+                const rebuilt = buildTimeFilters();
+                timeFilters = rebuilt.filters;
+                dateMap = rebuilt.map;
+                rebuildDateSidebar();
+                scheduleMidnightRefresh();
+            }, msUntilMidnight);
+        }
+        scheduleMidnightRefresh();
 
         // (allMarkerLayers removed — globe uses data-driven filtering)
 
         const dateSidebar = document.getElementById('date-sidebar');
-        const allDatePills = [];
+        let allDatePills = [];
+        let allBtn, dateScroll, dateScrollRaf = null;
 
-        // "ALL" button on top
-        const allBtn = document.createElement('button');
-        allBtn.id = 'date-all-btn';
-        allBtn.className = 'active';
-        allBtn.textContent = 'ALL';
-        allBtn.addEventListener('click', () => {
-            allDatePills.forEach(p => p.el.classList.remove('active'));
-            allBtn.classList.add('active');
-            activeTimeFilter = 'all';
-            applyTimeFilter();
-        });
-        dateSidebar.appendChild(allBtn);
+        function rebuildDateSidebar() {
+            dateSidebar.innerHTML = '';
+            allDatePills = [];
 
-        // Scrollable date wheel
-        const dateScroll = document.createElement('div');
-        dateScroll.className = 'date-scroll';
-
-        timeFilters.forEach(tf => {
-            const pill = document.createElement('button');
-            pill.className = 'date-pill';
-            pill.textContent = tf.label;
-            allDatePills.push({ key: tf.key, el: pill });
-
-            pill.addEventListener('click', () => {
+            // "ALL" button on top
+            allBtn = document.createElement('button');
+            allBtn.id = 'date-all-btn';
+            allBtn.className = activeTimeFilter === 'all' ? 'active' : '';
+            allBtn.textContent = 'ALL';
+            allBtn.addEventListener('click', () => {
                 allDatePills.forEach(p => p.el.classList.remove('active'));
-                allBtn.classList.remove('active');
-                pill.classList.add('active');
-                activeTimeFilter = tf.key;
+                allBtn.classList.add('active');
+                activeTimeFilter = 'all';
                 applyTimeFilter();
-                // Scroll the active pill into view
-                pill.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            });
+            dateSidebar.appendChild(allBtn);
+
+            // Scrollable date wheel
+            dateScroll = document.createElement('div');
+            dateScroll.className = 'date-scroll';
+
+            // Spacer top — lets first item center-align
+            const topSpacer = document.createElement('div');
+            topSpacer.className = 'date-spacer';
+            dateScroll.appendChild(topSpacer);
+
+            timeFilters.forEach(tf => {
+                const pill = document.createElement('button');
+                pill.className = 'date-pill';
+                pill.textContent = tf.label;
+                pill.dataset.key = tf.key;
+                if (tf.key === activeTimeFilter) pill.classList.add('active');
+                allDatePills.push({ key: tf.key, el: pill });
+
+                pill.addEventListener('click', () => {
+                    selectDatePill(tf.key, true);
+                });
+
+                dateScroll.appendChild(pill);
             });
 
-            dateScroll.appendChild(pill);
-        });
+            // Spacer bottom
+            const bottomSpacer = document.createElement('div');
+            bottomSpacer.className = 'date-spacer';
+            dateScroll.appendChild(bottomSpacer);
 
-        dateSidebar.appendChild(dateScroll);
+            // iOS wheel effect: apply depth/opacity based on distance from scroll center
+            let scrollStopTimer = null;
+            dateScroll.addEventListener('scroll', () => {
+                if (!dateScrollRaf) {
+                    dateScrollRaf = requestAnimationFrame(() => {
+                        dateScrollRaf = null;
+                        updateWheelVisuals();
+                    });
+                }
+                // When scrolling stops, auto-select whatever is centered
+                if (scrollStopTimer) clearTimeout(scrollStopTimer);
+                scrollStopTimer = setTimeout(() => {
+                    const scrollRect = dateScroll.getBoundingClientRect();
+                    const centerY = scrollRect.top + scrollRect.height / 2;
+                    let closest = null;
+                    let closestDist = Infinity;
+                    allDatePills.forEach(p => {
+                        const r = p.el.getBoundingClientRect();
+                        const pillCenter = r.top + r.height / 2;
+                        const d = Math.abs(pillCenter - centerY);
+                        if (d < closestDist) { closestDist = d; closest = p; }
+                    });
+                    if (closest && closest.key !== activeTimeFilter) {
+                        allDatePills.forEach(p => p.el.classList.remove('active'));
+                        if (allBtn) allBtn.classList.remove('active');
+                        closest.el.classList.add('active');
+                        activeTimeFilter = closest.key;
+                        applyTimeFilter();
+                    }
+                }, 140);
+            });
+
+            dateSidebar.appendChild(dateScroll);
+            // Initial visual pass after layout
+            requestAnimationFrame(() => {
+                updateWheelVisuals();
+                // Scroll the last date (today) into view by default
+                if (timeFilters.length > 0) {
+                    const lastPill = allDatePills[allDatePills.length - 1].el;
+                    lastPill.scrollIntoView({ block: 'center' });
+                    updateWheelVisuals();
+                }
+            });
+        }
+
+        function updateWheelVisuals() {
+            const scrollRect = dateScroll.getBoundingClientRect();
+            const centerY = scrollRect.top + scrollRect.height / 2;
+            const maxDist = scrollRect.height / 2;
+            allDatePills.forEach(p => {
+                const r = p.el.getBoundingClientRect();
+                const pillCenter = r.top + r.height / 2;
+                const dist = Math.abs(pillCenter - centerY);
+                const ratio = Math.min(dist / maxDist, 1);
+                // iOS-style: scale 1 at center → 0.72 at edge, opacity 1 → 0.2
+                const scale = 1 - ratio * 0.28;
+                const opacity = 1 - ratio * 0.8;
+                p.el.style.transform = `scale(${scale.toFixed(3)})`;
+                p.el.style.opacity = opacity.toFixed(3);
+            });
+        }
+
+        function selectDatePill(key, smooth) {
+            allDatePills.forEach(p => p.el.classList.remove('active'));
+            if (allBtn) allBtn.classList.remove('active');
+            const found = allDatePills.find(p => p.key === key);
+            if (!found) return;
+            found.el.classList.add('active');
+            activeTimeFilter = key;
+            applyTimeFilter();
+            found.el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+        }
+
+        rebuildDateSidebar();
 
         function applyTimeFilter() {
             updateGlobe();
