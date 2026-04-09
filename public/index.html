@@ -722,10 +722,10 @@
         /* ===== LIVE CHAT PANEL ===== */
         #chat-panel {
             position: fixed;
-            bottom: 18px;
+            top: 64px;
             left: 18px;
             width: 320px;
-            max-height: 460px;
+            max-height: 420px;
             z-index: 1100;
             background: rgba(10,10,10,0.92);
             backdrop-filter: blur(14px);
@@ -864,12 +864,13 @@
         }
         @media (max-width: 768px) {
             #chat-panel {
-                bottom: 6px;
+                top: 52px;
+                bottom: auto;
                 left: 6px;
                 right: auto;
                 width: calc(100vw - 12px);
                 max-width: 360px;
-                max-height: 55vh;
+                max-height: 50vh;
             }
             #chat-panel.collapsed { max-height: 40px; }
             #chat-messages { max-height: 40vh; min-height: 160px; }
