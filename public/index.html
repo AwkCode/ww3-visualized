@@ -816,6 +816,41 @@
         .chat-msg-text {
             color: #d1d5db;
         }
+        .chat-msg-time {
+            font-family: 'IBM Plex Mono', monospace;
+            color: #4b5563;
+            font-size: 9px;
+            margin-right: 6px;
+            letter-spacing: 0.02em;
+        }
+        #chat-typing {
+            font-size: 10px;
+            color: #9ca3af;
+            font-style: italic;
+            padding: 0 14px 4px;
+            min-height: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        #chat-typing:empty { min-height: 0; padding: 0; }
+        .typing-dots {
+            display: inline-flex;
+            gap: 2px;
+        }
+        .typing-dots span {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: #9ca3af;
+            animation: typing-bounce 1.2s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-3px); opacity: 1; }
+        }
         .chat-system {
             font-size: 10px;
             color: #6b7280;
@@ -1194,6 +1229,7 @@
             <button id="chat-toggle-btn" title="Collapse">▾</button>
         </div>
         <div id="chat-messages"></div>
+        <div id="chat-typing"></div>
         <div id="chat-error"></div>
         <div id="chat-input-wrap">
             <input id="chat-input" type="text" maxlength="200" placeholder="Type a message..." autocomplete="off" />
@@ -2578,18 +2614,38 @@
             return div.innerHTML;
         }
 
-        // Render a single message
+        // Format a timestamp as HH:MM (24h)
+        function formatChatTime(ts) {
+            const d = ts ? new Date(ts) : new Date();
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        // Render a single message (dedupe by id)
         const chatMessagesEl = document.getElementById('chat-messages');
+        const renderedMsgIds = new Set();
         function renderMsg(msg) {
+            if (msg.id != null) {
+                if (renderedMsgIds.has(msg.id)) return;
+                renderedMsgIds.add(msg.id);
+            }
             const div = document.createElement('div');
             div.className = 'chat-msg';
+            if (msg.id != null) div.dataset.msgId = msg.id;
+
             const isSelf = msg.username === chatUsername;
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'chat-msg-time';
+            timeSpan.textContent = formatChatTime(msg.created_at);
+
             const userSpan = document.createElement('span');
             userSpan.className = 'chat-msg-user' + (isSelf ? ' self' : '');
             userSpan.textContent = msg.username + ':';
+
             const textSpan = document.createElement('span');
             textSpan.className = 'chat-msg-text';
             textSpan.textContent = ' ' + msg.text;
+
+            div.appendChild(timeSpan);
             div.appendChild(userSpan);
             div.appendChild(textSpan);
             chatMessagesEl.appendChild(div);
@@ -2614,10 +2670,54 @@
             data.reverse().forEach(renderMsg);
         }
 
-        // Subscribe to new messages
-        sb.channel('messages-realtime')
+        // ===== TYPING INDICATOR STATE =====
+        const chatTypingEl = document.getElementById('chat-typing');
+        const typingUsers = new Map(); // username -> timeout id
+        function renderTyping() {
+            const names = [...typingUsers.keys()];
+            if (names.length === 0) {
+                chatTypingEl.innerHTML = '';
+                return;
+            }
+            const label = names.length === 1
+                ? `${names[0]} is typing`
+                : names.length === 2
+                    ? `${names[0]} and ${names[1]} are typing`
+                    : `${names.length} people are typing`;
+            chatTypingEl.innerHTML = `<span>${escapeHtml(label)}</span><span class="typing-dots"><span></span><span></span><span></span></span>`;
+        }
+        function markUserTyping(username) {
+            if (username === chatUsername) return;
+            if (typingUsers.has(username)) clearTimeout(typingUsers.get(username));
+            const tid = setTimeout(() => {
+                typingUsers.delete(username);
+                renderTyping();
+            }, 3500);
+            typingUsers.set(username, tid);
+            renderTyping();
+        }
+        function clearUserTyping(username) {
+            if (typingUsers.has(username)) {
+                clearTimeout(typingUsers.get(username));
+                typingUsers.delete(username);
+                renderTyping();
+            }
+        }
+
+        // Subscribe to new messages + typing broadcasts
+        const chatChannel = sb.channel('messages-realtime', {
+            config: { broadcast: { self: false } }
+        });
+        chatChannel
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
                 renderMsg(payload.new);
+                clearUserTyping(payload.new.username);
+            })
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                if (payload && payload.username) markUserTyping(payload.username);
+            })
+            .on('broadcast', { event: 'stop_typing' }, ({ payload }) => {
+                if (payload && payload.username) clearUserTyping(payload.username);
             })
             .subscribe();
 
@@ -2649,7 +2749,12 @@
             }
 
             chatSend.disabled = true;
-            const { error } = await sb.from('messages').insert({ username: chatUsername, text });
+            // .select() returns the inserted row so we can render instantly
+            const { data, error } = await sb
+                .from('messages')
+                .insert({ username: chatUsername, text })
+                .select()
+                .single();
             chatSend.disabled = false;
 
             if (error) {
@@ -2658,11 +2763,32 @@
             }
             lastSendTime = now;
             chatInput.value = '';
+            // Optimistic render — dedupe set ensures realtime echo won't double-print
+            if (data) renderMsg(data);
+            // Let others know we stopped typing
+            chatChannel.send({ type: 'broadcast', event: 'stop_typing', payload: { username: chatUsername } });
         }
 
         chatSend.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+        });
+
+        // Broadcast typing events (throttled to every 1.5s while typing)
+        let lastTypingBroadcast = 0;
+        let stopTypingTimer = null;
+        chatInput.addEventListener('input', () => {
+            if (!chatInput.value.trim()) return;
+            const now = Date.now();
+            if (now - lastTypingBroadcast > 1500) {
+                lastTypingBroadcast = now;
+                chatChannel.send({ type: 'broadcast', event: 'typing', payload: { username: chatUsername } });
+            }
+            if (stopTypingTimer) clearTimeout(stopTypingTimer);
+            stopTypingTimer = setTimeout(() => {
+                chatChannel.send({ type: 'broadcast', event: 'stop_typing', payload: { username: chatUsername } });
+                lastTypingBroadcast = 0;
+            }, 2500);
         });
 
         // Chat panel collapse/expand
