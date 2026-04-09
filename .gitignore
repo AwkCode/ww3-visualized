@@ -8,3 +8,4 @@ node_modules/
 .claude/
 scripts/extract-strikes.js
 public/config.js
+scripts/backfill-archive.js
