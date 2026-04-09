@@ -2000,5 +2000,16 @@
     "casualties": "At least 182 killed",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Lavan Island — Oil Refinery",
+    "lat": 26.85,
+    "lng": 53.35,
+    "attacker": "Iran",
+    "date": "Apr 8, 2026",
+    "details": "Missile attack on oil refinery",
+    "casualties": "Unknown",
+    "killed": 0,
+    "injured": 0
   }
 ]
