@@ -1974,13 +1974,24 @@
 
             if (filtered.length === 0) {
                 const dateLabel = activeTimeFilter === 'all' ? '' : ' for ' + (timeFilters.find(t => t.key === activeTimeFilter)?.label || '');
-                // If this is a past date and we haven't tried yet, fetch from GDELT
+                // If this is a past date and we haven't tried fetching yet, fetch from GDELT
                 if (dateFilterActive && selectedDate) {
                     const today = new Date(); today.setHours(0,0,0,0);
                     if (selectedDate.getTime() < today.getTime()) {
+                        const yy = selectedDate.getFullYear();
+                        const mm = pad2(selectedDate.getMonth() + 1);
+                        const dd = pad2(selectedDate.getDate());
+                        const key = `${yy}-${mm}-${dd}`;
+                        // If already attempted (success or empty), don't re-fetch — prevents infinite loop
+                        if (key in historicalNewsCache) {
+                            list.innerHTML = `<div class="news-loading">No articles found${dateLabel}</div>`;
+                            return;
+                        }
                         list.innerHTML = `<div class="news-loading">Searching archive${dateLabel}...</div>`;
+                        const filterSnapshot = activeTimeFilter;
                         fetchHistoricalNews(selectedDate).then(() => {
-                            if (activeTimeFilter !== 'all') renderNews();
+                            // Only rerender if the user is still looking at this same date
+                            if (activeTimeFilter === filterSnapshot) renderNews();
                         });
                         return;
                     }
