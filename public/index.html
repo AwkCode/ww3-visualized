@@ -184,10 +184,7 @@
             color: #ef4444;
             font-weight: 700;
         }
-        /* iOS-style center indicator line */
-        #date-sidebar {
-            position: relative;
-        }
+        /* iOS-style center indicator lines (inside the wheel) */
         #date-sidebar::before,
         #date-sidebar::after {
             content: '';
@@ -196,7 +193,7 @@
             right: 8px;
             height: 1px;
             background: rgba(239,68,68,0.25);
-            z-index: 1;
+            z-index: 2;
             pointer-events: none;
         }
         #date-sidebar::before { top: calc(50% - 13px + 18px); }
