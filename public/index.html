@@ -1284,11 +1284,13 @@
             </div>
             <div id="coalition-legend">
                 <div class="legend-title">Coalition Alignments</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel <span class="legend-sub">· combatants</span></span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">Western Bloc <span class="legend-sub">· NATO, EU, Pacific allies</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span class="legend-label">US / Israel <span class="legend-sub">· primary combatants</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><span class="legend-label">Active Coalition <span class="legend-sub">· UK, FR, JOR, DE, AUS, NL</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div><span class="legend-label">Host Nations <span class="legend-sub">· GCC bases, Cyprus, Turkey</span></span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><span class="legend-label">Western Bloc <span class="legend-sub">· rest of NATO, EU, Pacific</span></span></div>
                 <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span class="legend-label">Iran Axis <span class="legend-sub">· RUS, CHN, PRK, proxies</span></span></div>
-                <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span class="legend-label">Non-Aligned <span class="legend-sub">· GCC, India, Turkey, Africa</span></span></div>
-                <div class="legend-footer">Based on 2026 foreign-policy posture</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span class="legend-label">Non-Aligned <span class="legend-sub">· India, Africa, Latin America</span></span></div>
+                <div class="legend-footer">Based on 2024–2026 posture &amp; verified operations</div>
             </div>
             <div id="strike-counter"></div>
             <div id="date-sidebar"></div>
@@ -1997,32 +1999,63 @@
 
             // ===== COALITION ALIGNMENTS (2026 Scenario) =====
             // ISO 3166-1 alpha-3 codes. Each country appears in exactly one group.
-            // Alignments reflect real-world foreign policy posture as of early 2026,
-            // filtered through the lens of a US/Israel vs Iran conflict.
+            // Six-tier structure reflects actual 2024–2026 posture, from direct
+            // combatants to non-aligned states, based on real interception events,
+            // basing agreements, and diplomatic alignments.
             const coalitionGroups = {
-                // Primary combatants — US and Israel directly conducting strikes.
+                // TIER 1 — Primary combatants conducting offensive strikes.
                 'us-israel': {
                     codes: ['USA', 'ISR'],
                     color: '#3b82f6'
                 },
-                // Western Bloc — NATO, EU, Five Eyes, major Pacific allies. These nations
-                // back US/Israel diplomatically, share intelligence, and in some cases
-                // contribute logistics, airspace, or materiel (UK, France, Germany, etc.).
+                // TIER 2 — Active military participants. Confirmed to have engaged
+                // in interception operations against Iranian munitions (April &
+                // October 2024 precedent) or deployed combat assets in-theatre.
+                //  · UK — RAF Typhoons intercepted drones over Iraq/Syria; Akrotiri strikes
+                //  · France — Rafales intercepted drones; Camp de la Paix UAE; CdG carrier
+                //  · Jordan — Jordanian F-16s + Patriots shot down Iranian drones
+                //  · Germany — Patriot batteries deployed to Jordan/Slovakia
+                //  · Australia — RAN destroyers in Red Sea anti-Houthi operations
+                //  · Netherlands — F-35 coalition contributions, Eastern Med
+                'active-coalition': {
+                    codes: ['GBR', 'FRA', 'JOR', 'DEU', 'AUS', 'NLD'],
+                    color: '#a855f7'
+                },
+                // TIER 3 — Host / basing nations. Not combatants, but provide the
+                // airspace, bases, and radar coverage that make US operations possible.
+                // Publicly "neutral" but strategically essential to the campaign.
+                //  · Qatar — Al Udeid Air Base (CENTCOM forward HQ)
+                //  · Bahrain — NSA Bahrain (US Navy 5th Fleet HQ)
+                //  · Kuwait — Camp Arifjan, Ali Al Salem, Camp Buehring
+                //  · UAE — Al Dhafra Air Base (US F-35s, French Camp de la Paix)
+                //  · Saudi Arabia — Prince Sultan Air Base, overflight rights
+                //  · Oman — overflight corridor, Masirah Island
+                //  · Cyprus — UK SBAs Akrotiri/Dhekelia (launching point for strikes)
+                //  · Turkey — Incirlik Air Base (complicated but present)
+                //  · Djibouti — Camp Lemonnier, only permanent US base in Africa
+                //  · Iraq — US forces at Al-Asad & Erbil (contested but hosting)
+                'host-nations': {
+                    codes: ['QAT', 'BHR', 'KWT', 'ARE', 'SAU', 'OMN', 'CYP', 'TUR', 'DJI', 'IRQ'],
+                    color: '#06b6d4'
+                },
+                // TIER 4 — Western Bloc. Diplomatic, financial, and intelligence
+                // support. Back US/Israel in the UN and via sanctions but do not
+                // contribute combat assets. Remaining NATO + EU + Pacific allies.
                 'western-allies': {
                     codes: [
-                        // NATO Europe
-                        'GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'PRT', 'NLD', 'BEL', 'LUX',
+                        // NATO Europe (minus GBR/FRA/DEU/NLD — Tier 2)
+                        'ITA', 'ESP', 'PRT', 'BEL', 'LUX',
                         'DNK', 'NOR', 'ISL', 'GRC', 'POL', 'CZE', 'SVK', 'SVN', 'HRV',
                         'ROU', 'BGR', 'HUN', 'EST', 'LVA', 'LTU', 'ALB', 'MNE', 'MKD',
                         'FIN', 'SWE',
-                        // EU non-NATO
-                        'IRL', 'AUT', 'CYP', 'MLT',
+                        // EU non-NATO (minus CYP — Tier 3)
+                        'IRL', 'AUT', 'MLT',
                         // Other Western Europe
                         'CHE',
                         // North America
                         'CAN',
-                        // Indo-Pacific allies (US mutual-defense treaties + AUKUS + Quad-leaning)
-                        'AUS', 'NZL', 'JPN', 'KOR', 'PHL', 'TWN',
+                        // Indo-Pacific allies (minus AUS — Tier 2)
+                        'NZL', 'JPN', 'KOR', 'PHL', 'TWN',
                         // Pro-West Eastern Europe / EU candidates
                         'UKR', 'MDA', 'XKX', 'KOS',
                         // Latin America (strongly pro-West governments)
@@ -2030,10 +2063,7 @@
                     ],
                     color: '#eab308'
                 },
-                // Iran Axis — Iran, direct combatants, active proxies, and strategic
-                // backers. Includes Russia/China (materiel + diplomatic cover), North Korea
-                // (missile tech), Syria (client), Lebanon/Yemen (Hezbollah/Houthi territory),
-                // Latin American ALBA bloc, and Russia-aligned African juntas.
+                // TIER 5 — Iran Axis. Direct combatants, proxies, and strategic backers.
                 'iran-axis': {
                     codes: [
                         // Core
@@ -2049,18 +2079,12 @@
                     ],
                     color: '#ef4444'
                 },
-                // Neutral / Non-Aligned — every other country. Includes the GCC (Saudi,
-                // UAE, Qatar, Bahrain, Kuwait, Oman — hedging between US security and Iran
-                // detente), Arab states, South & SE Asia (India, Pakistan, Indonesia...),
-                // Central Asia, most of Africa, most of Latin America, and Turkey.
+                // TIER 6 — Non-Aligned. Everyone else: neutral, hedging, or civil-war states.
                 'neutral': {
                     codes: [
-                        // Turkey — NATO but pragmatic/non-aligned in this conflict
-                        'TUR',
-                        // GCC + Levant + North Africa
-                        'SAU', 'ARE', 'QAT', 'BHR', 'KWT', 'OMN',
-                        'JOR', 'EGY', 'IRQ', 'PSE',
-                        'MAR', 'TUN', 'DZA', 'LBY', 'SDN', 'SSD', 'MRT', 'DJI', 'SOM',
+                        // Arab states (minus Tier 3 host nations and Tier 2 Jordan)
+                        'EGY', 'PSE',
+                        'MAR', 'TUN', 'DZA', 'LBY', 'SDN', 'SSD', 'MRT', 'SOM',
                         // Balkans non-aligned
                         'SRB', 'BIH',
                         // Central Asia / Caucasus
