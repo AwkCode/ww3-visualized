@@ -2088,5 +2088,16 @@
     "casualties": "107 killed",
     "killed": 107,
     "injured": 0
+  },
+  {
+    "name": "Lebanon — Various Targets",
+    "lat": 33.85,
+    "lng": 35.86,
+    "attacker": "Israel",
+    "date": "Apr 10, 2026",
+    "details": "Israeli strikes on over 100 targets",
+    "casualties": "300+ killed",
+    "killed": 300,
+    "injured": 0
   }
 ]
