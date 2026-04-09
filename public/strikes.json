@@ -2022,5 +2022,16 @@
     "casualties": "Several killed",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Gaza — Al Jazeera Journalist",
+    "lat": 31.5,
+    "lng": 34.45,
+    "attacker": "Israel",
+    "date": "Apr 9, 2026",
+    "details": "Israeli strike kills Al Jazeera journalist",
+    "casualties": "1 killed",
+    "killed": 1,
+    "injured": 0
   }
 ]
