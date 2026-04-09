@@ -2033,5 +2033,38 @@
     "casualties": "1 killed",
     "killed": 1,
     "injured": 0
+  },
+  {
+    "name": "Southern Suburbs of Beirut — Israeli Strikes",
+    "lat": 33.85,
+    "lng": 35.5,
+    "attacker": "Israel",
+    "date": "Apr 8, 2026",
+    "details": "Israeli air strikes",
+    "casualties": "At least 182 killed, 890 wounded",
+    "killed": 182,
+    "injured": 890
+  },
+  {
+    "name": "Southern Lebanon — Israeli Strikes",
+    "lat": 33.33,
+    "lng": 35.33,
+    "attacker": "Israel",
+    "date": "Apr 8, 2026",
+    "details": "Israeli air strikes",
+    "casualties": "More than 250 killed",
+    "killed": 0,
+    "injured": 0
+  },
+  {
+    "name": "Eastern Bekaa Valley — Israeli Strikes",
+    "lat": 33.85,
+    "lng": 36,
+    "attacker": "Israel",
+    "date": "Apr 8, 2026",
+    "details": "Israeli air strikes",
+    "casualties": "More than 250 killed",
+    "killed": 0,
+    "injured": 0
   }
 ]
