@@ -949,15 +949,15 @@
                 font-size: 10px;
             }
 
-            /* Chat panel — collapsed-only pill on mobile top-left */
+            /* Chat panel — top-left pill, BELOW the coalition toggle so it doesn't overlap */
             #chat-panel {
-                top: 38px;
+                top: 62px;
                 bottom: auto;
                 left: 6px;
                 right: auto;
-                width: 180px;
-                max-width: 180px;
-                max-height: 70vh;
+                width: 160px;
+                max-width: 160px;
+                max-height: 60vh;
                 transition: width 0.25s ease, max-height 0.25s ease;
             }
             #chat-panel:not(.collapsed) {
@@ -1004,7 +1004,7 @@
                 min-width: 48px;
             }
 
-            /* Strike counter — bottom-left, starts collapsed */
+            /* Strike counter — anchored bottom-left, expands UPWARD (flex reverse) */
             #strike-counter {
                 bottom: 6px;
                 top: auto;
@@ -1015,6 +1015,8 @@
                 max-width: calc(100vw - 12px);
                 max-height: none;
                 overflow: visible;
+                display: flex;
+                flex-direction: column-reverse;
             }
             #strike-counter .counter-toggle { padding: 7px 11px; }
             #strike-counter .counter-toggle-label { font-size: 8px; }
