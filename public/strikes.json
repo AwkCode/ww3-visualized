@@ -2099,5 +2099,16 @@
     "casualties": "300+ killed",
     "killed": 300,
     "injured": 0
+  },
+  {
+    "name": "Kuwait — Drone Strike",
+    "lat": 29.37,
+    "lng": 47.98,
+    "attacker": "Iran",
+    "date": "Apr 11, 2026",
+    "details": "Drone strike on Kuwait",
+    "casualties": "Unknown",
+    "killed": 0,
+    "injured": 0
   }
 ]
