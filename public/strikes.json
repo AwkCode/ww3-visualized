@@ -2110,5 +2110,16 @@
     "casualties": "Unknown",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Nahariya — 1,500-year-old Byzantine church",
+    "lat": 33,
+    "lng": 35.1,
+    "attacker": "Hezbollah",
+    "date": "Apr 12, 2026",
+    "details": "Hezbollah rocket attack",
+    "casualties": "Unknown",
+    "killed": 0,
+    "injured": 0
   }
 ]
