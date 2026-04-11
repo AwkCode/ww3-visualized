@@ -2242,5 +2242,16 @@
     "casualties": "7 killed",
     "killed": 7,
     "injured": 0
+  },
+  {
+    "name": "Southern Lebanon — Israeli Strikes",
+    "lat": 33.3,
+    "lng": 35.3,
+    "attacker": "Israel",
+    "date": "Apr 17, 2026",
+    "details": "Israeli strikes kill at least 18 people",
+    "casualties": "At least 18 killed",
+    "killed": 18,
+    "injured": 0
   }
 ]
