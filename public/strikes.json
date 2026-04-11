@@ -2220,5 +2220,27 @@
     "casualties": "At least 6 Palestinians killed",
     "killed": 6,
     "injured": 0
+  },
+  {
+    "name": "Occupied West Bank village — Palestinian shot dead",
+    "lat": 32,
+    "lng": 35,
+    "attacker": "Israel",
+    "date": "Apr 17, 2026",
+    "details": "Palestinian shot dead during Israeli settler attack",
+    "casualties": "1 killed",
+    "killed": 1,
+    "injured": 0
+  },
+  {
+    "name": "Gaza — Overnight Israeli air strikes",
+    "lat": 31.5,
+    "lng": 34.5,
+    "attacker": "Israel",
+    "date": "Apr 17, 2026",
+    "details": "Seven people killed in overnight Israeli air strikes",
+    "casualties": "7 killed",
+    "killed": 7,
+    "injured": 0
   }
 ]
