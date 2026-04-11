@@ -2154,5 +2154,38 @@
     "casualties": "At least 6 people killed",
     "killed": 6,
     "injured": 0
+  },
+  {
+    "name": "Gaza — Bureij camp",
+    "lat": 31.446,
+    "lng": 34.394,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Israeli attack on civilians",
+    "casualties": "7 Palestinians killed",
+    "killed": 7,
+    "injured": 0
+  },
+  {
+    "name": "Gaza — Khan Younis",
+    "lat": 31.356,
+    "lng": 34.307,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Drones attack a tent",
+    "casualties": "Unknown",
+    "killed": 0,
+    "injured": 0
+  },
+  {
+    "name": "Gaza — Central Gaza mosque",
+    "lat": 31.512,
+    "lng": 34.456,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Drone attack near a mosque",
+    "casualties": "6 Palestinians killed",
+    "killed": 6,
+    "injured": 0
   }
 ]
