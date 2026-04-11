@@ -2121,5 +2121,27 @@
     "casualties": "Unknown",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Nabatieh — Government Building",
+    "lat": 33.3833,
+    "lng": 35.5,
+    "attacker": "Israel",
+    "date": "Apr 14, 2026",
+    "details": "Israeli air strike on government building",
+    "casualties": "13 Lebanese officers killed",
+    "killed": 13,
+    "injured": 0
+  },
+  {
+    "name": "Nahariya — 1,500-year-old Byzantine church",
+    "lat": 33,
+    "lng": 35.1,
+    "attacker": "Hezbollah",
+    "date": "Apr 14, 2026",
+    "details": "Hezbollah rocket attack",
+    "casualties": "Church damaged, no reported casualties",
+    "killed": 0,
+    "injured": 0
   }
 ]
