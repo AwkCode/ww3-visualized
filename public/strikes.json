@@ -2187,5 +2187,38 @@
     "casualties": "6 Palestinians killed",
     "killed": 6,
     "injured": 0
+  },
+  {
+    "name": "Bureij camp — Israeli Strikes",
+    "lat": 31.4422,
+    "lng": 34.2833,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Israeli strike on civilians",
+    "casualties": "At least 7 Palestinians killed",
+    "killed": 7,
+    "injured": 0
+  },
+  {
+    "name": "Khan Younis — Israeli Drone Attack",
+    "lat": 31.3553,
+    "lng": 34.3083,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Israeli drone attack on a tent",
+    "casualties": "No reported casualties",
+    "killed": 0,
+    "injured": 0
+  },
+  {
+    "name": "Central Gaza mosque — Israeli Drone Attack",
+    "lat": 31.5128,
+    "lng": 34.4414,
+    "attacker": "Israel",
+    "date": "Apr 16, 2026",
+    "details": "Israeli drone attack near a mosque",
+    "casualties": "At least 6 Palestinians killed",
+    "killed": 6,
+    "injured": 0
   }
 ]
