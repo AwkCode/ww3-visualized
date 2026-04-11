@@ -2143,5 +2143,16 @@
     "casualties": "Church damaged, no reported casualties",
     "killed": 0,
     "injured": 0
+  },
+  {
+    "name": "Gaza — Mosque",
+    "lat": 31.5,
+    "lng": 34.45,
+    "attacker": "Israel",
+    "date": "Apr 15, 2026",
+    "details": "Israeli drone attack near a mosque",
+    "casualties": "At least 6 people killed",
+    "killed": 6,
+    "injured": 0
   }
 ]
